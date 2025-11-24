@@ -28,7 +28,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+    "**/*.mts",
+    "next-auth.d.ts"
+, "src/app/patient/page.tsx", "src/app/api/pharmacy/shop/route.ts", "src/components/ToastContainer.tsx"  ],
   "exclude": ["node_modules"]
 }
