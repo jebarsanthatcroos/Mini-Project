@@ -2,27 +2,33 @@
 
 import { useState } from 'react';
 import { UseFormRegister, FieldValues, Path } from 'react-hook-form';
-import { MdPassword, MdCheck } from 'react-icons/md';
+
+// Icons
+import { MdPassword } from 'react-icons/md';
 import { FaExclamationTriangle, FaEye, FaEyeSlash } from 'react-icons/fa';
-import Link from 'next/link';
+
+// Components
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 interface PasswordFieldProps<T extends FieldValues> {
   register: UseFormRegister<T>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error?: any;
   value?: string;
-  showForgotPassword?: boolean;
   placeholder?: string;
   label?: string;
+  showForgotPassword?: boolean;
+  showStrengthIndicator?: boolean;
 }
 
 export default function PasswordField<T extends FieldValues>({
   register,
   error,
   value,
-  showForgotPassword = true,
   placeholder = 'Enter your password',
   label = 'Password',
+  showForgotPassword = true,
+  showStrengthIndicator = false,
 }: PasswordFieldProps<T>) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,12 +42,12 @@ export default function PasswordField<T extends FieldValues>({
           {label}
         </label>
         {showForgotPassword && (
-          <Link
+          <a
             href='/auth/forgot-password'
             className='text-sm text-blue-600 hover:text-blue-500 transition-colors'
           >
             Forgot password?
-          </Link>
+          </a>
         )}
       </div>
       <div className='relative'>
@@ -51,7 +57,9 @@ export default function PasswordField<T extends FieldValues>({
         <input
           id='password'
           type={showPassword ? 'text' : 'password'}
-          autoComplete='current-password'
+          autoComplete={
+            showStrengthIndicator ? 'new-password' : 'current-password'
+          }
           className={`block w-full pl-10 pr-10 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
             error
               ? 'border-red-300 bg-red-50'
@@ -72,12 +80,13 @@ export default function PasswordField<T extends FieldValues>({
             <FaEye className='h-5 w-5 text-gray-400 hover:text-gray-600' />
           )}
         </button>
-        {!error && value && (
-          <div className='absolute inset-y-0 right-8 pr-3 flex items-center'>
-            <MdCheck className='h-5 w-5 text-green-500' />
-          </div>
-        )}
       </div>
+
+      {/* Password Strength Indicator (for signup) */}
+      {showStrengthIndicator && value && (
+        <PasswordStrengthIndicator password={value} />
+      )}
+
       {error && (
         <p className='mt-1 text-sm text-red-600 flex items-center'>
           <FaExclamationTriangle className='mr-1 text-xs' />

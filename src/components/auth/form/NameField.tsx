@@ -1,23 +1,34 @@
-import { UseFormRegister } from 'react-hook-form';
+'use client';
+
+import { UseFormRegister, FieldValues, Path } from 'react-hook-form';
+
+// Icons
 import { MdPerson, MdCheck } from 'react-icons/md';
 import { FaExclamationTriangle } from 'react-icons/fa';
-import { SignUpFormData } from '@/app/auth/signup/page';
 
-interface NameFieldProps {
-  register: UseFormRegister<SignUpFormData>;
+interface NameFieldProps<T extends FieldValues> {
+  register: UseFormRegister<T>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error?: any;
   value?: string;
+  placeholder?: string;
+  label?: string;
 }
 
-export default function NameField({ register, error, value }: NameFieldProps) {
+export default function NameField<T extends FieldValues>({
+  register,
+  error,
+  value,
+  placeholder = 'Enter your full name',
+  label = 'Full Name',
+}: NameFieldProps<T>) {
   return (
     <div>
       <label
         htmlFor='name'
         className='block text-sm font-medium text-gray-700 mb-2'
       >
-        Full Name
+        {label}
       </label>
       <div className='relative'>
         <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
@@ -32,9 +43,9 @@ export default function NameField({ register, error, value }: NameFieldProps) {
               ? 'border-red-300 bg-red-50'
               : 'border-gray-300 focus:border-blue-500'
           }`}
-          placeholder='Enter your full name'
+          placeholder={placeholder}
           suppressHydrationWarning
-          {...register('name')}
+          {...register('name' as Path<T>)}
         />
         {!error && value && (
           <div className='absolute inset-y-0 right-0 pr-3 flex items-center'>

@@ -1,25 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { UseFormRegister } from 'react-hook-form';
+import { UseFormRegister, FieldValues, Path } from 'react-hook-form';
+
+// Icons
 import { MdPassword, MdCheck } from 'react-icons/md';
 import { FaExclamationTriangle, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { SignUpFormData } from '@/app/auth/signup/page';
 
-interface ConfirmPasswordFieldProps {
-  register: UseFormRegister<SignUpFormData>;
+interface ConfirmPasswordFieldProps<T extends FieldValues> {
+  register: UseFormRegister<T>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error?: any;
   value?: string;
   passwordValue?: string;
+  placeholder?: string;
+  label?: string;
 }
 
-export default function ConfirmPasswordField({
+export default function ConfirmPasswordField<T extends FieldValues>({
   register,
   error,
   value,
   passwordValue,
-}: ConfirmPasswordFieldProps) {
+  placeholder = 'Confirm your password',
+  label = 'Confirm Password',
+}: ConfirmPasswordFieldProps<T>) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
@@ -28,7 +33,7 @@ export default function ConfirmPasswordField({
         htmlFor='confirmPassword'
         className='block text-sm font-medium text-gray-700 mb-2'
       >
-        Confirm Password
+        {label}
       </label>
       <div className='relative'>
         <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
@@ -43,9 +48,9 @@ export default function ConfirmPasswordField({
               ? 'border-red-300 bg-red-50'
               : 'border-gray-300 focus:border-blue-500'
           }`}
-          placeholder='Confirm your password'
+          placeholder={placeholder}
           suppressHydrationWarning
-          {...register('confirmPassword')}
+          {...register('confirmPassword' as Path<T>)}
         />
         <button
           type='button'
