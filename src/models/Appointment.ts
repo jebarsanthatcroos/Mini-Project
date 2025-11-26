@@ -242,7 +242,6 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
     toJSON: {
       virtuals: true,
       transform: function (doc, ret) {
-         
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),

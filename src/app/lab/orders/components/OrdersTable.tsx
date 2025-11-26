@@ -28,7 +28,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
       HIGH: 'bg-orange-100 text-orange-800',
       STAT: 'bg-red-100 text-red-800',
     };
-    return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return (
+      colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -44,118 +46,128 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.5 }}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+      className='bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden'
     >
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className='overflow-x-auto'>
+        <table className='w-full'>
+          <thead className='bg-gray-50 border-b border-gray-200'>
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Patient & Test
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Doctor
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Status
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Priority
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Requested Date
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Technician
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className='px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className='bg-white divide-y divide-gray-200'>
             {orders.map((order, index) => (
               <motion.tr
                 key={order._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="hover:bg-gray-50 transition-colors"
+                className='hover:bg-gray-50 transition-colors'
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className='px-6 py-4 whitespace-nowrap'>
                   <div>
-                    <div className="flex items-center">
-                      <FiUser className="text-gray-400 mr-2" />
-                      <span className="font-medium text-gray-900">
+                    <div className='flex items-center'>
+                      <FiUser className='text-gray-400 mr-2' />
+                      <span className='font-medium text-gray-900'>
                         {order.patient.name}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className='text-sm text-gray-500 mt-1'>
                       {order.test.name}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className='text-xs text-gray-400'>
                       {order.test.category}
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{order.doctor.name}</div>
-                  <div className="text-sm text-gray-500">{order.doctor.email}</div>
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <div className='text-sm text-gray-900'>
+                    {order.doctor.name}
+                  </div>
+                  <div className='text-sm text-gray-500'>
+                    {order.doctor.email}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                  >
                     {order.status.replace('_', ' ')}
                   </span>
                   {order.isOverdue && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <span className='ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'>
                       Overdue
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(order.priority)}`}>
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(order.priority)}`}
+                  >
                     {order.priority}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
                   {formatDate(order.requestedDate)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className='px-6 py-4 whitespace-nowrap'>
                   {order.labTechnician ? (
                     <div>
-                      <div className="text-sm text-gray-900">
+                      <div className='text-sm text-gray-900'>
                         {order.labTechnician.name}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className='text-xs text-gray-500'>
                         {order.labTechnician.employeeId}
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-500">Unassigned</span>
+                    <span className='text-sm text-gray-500'>Unassigned</span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
+                <td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
+                  <div className='flex space-x-2'>
                     <button
                       onClick={() => onViewDetails(order)}
-                      className="text-blue-600 hover:text-blue-900 transition-colors"
-                      title="View Details"
+                      className='text-blue-600 hover:text-blue-900 transition-colors'
+                      title='View Details'
                     >
-                      <FiEye className="w-4 h-4" />
+                      <FiEye className='w-4 h-4' />
                     </button>
                     <button
-                      onClick={() => router.push(`/lab/orders/${order._id}/edit`)}
-                      className="text-green-600 hover:text-green-900 transition-colors"
-                      title="Edit Order"
+                      onClick={() =>
+                        router.push(`/lab/orders/${order._id}/edit`)
+                      }
+                      className='text-green-600 hover:text-green-900 transition-colors'
+                      title='Edit Order'
                     >
-                      <FiEdit className="w-4 h-4" />
+                      <FiEdit className='w-4 h-4' />
                     </button>
                     <button
                       onClick={() => onStatusUpdate(order._id, 'CANCELLED')}
-                      className="text-red-600 hover:text-red-900 transition-colors"
-                      title="Cancel Order"
+                      className='text-red-600 hover:text-red-900 transition-colors'
+                      title='Cancel Order'
                     >
-                      <FiTrash2 className="w-4 h-4" />
+                      <FiTrash2 className='w-4 h-4' />
                     </button>
                   </div>
                 </td>
@@ -166,10 +178,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
       </div>
 
       {orders.length === 0 && (
-        <div className="text-center py-12">
-          <FiUsers className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No orders found</h3>
-          <p className="mt-2 text-gray-500">
+        <div className='text-center py-12'>
+          <FiUsers className='mx-auto h-12 w-12 text-gray-400' />
+          <h3 className='mt-4 text-lg font-medium text-gray-900'>
+            No orders found
+          </h3>
+          <p className='mt-2 text-gray-500'>
             Try adjusting your search or filter criteria.
           </p>
         </div>

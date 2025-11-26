@@ -13,7 +13,7 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const LabTestRequest = (await import('@/models/LabTestRequest')).default;
     const activeTests = await LabTestRequest.countDocuments({
       labTechnician: params.id,
-      status: { $in: ['SAMPLE_COLLECTED', 'IN_PROGRESS'] }
+      status: { $in: ['SAMPLE_COLLECTED', 'IN_PROGRESS'] },
     });
 
     const workloadInfo = {
@@ -44,11 +44,12 @@ export async function GET(request: NextRequest, { params }: Params) {
         currentWorkload: technician.currentWorkload,
         maxConcurrentTests: technician.maxConcurrentTests,
         efficiency: technician.efficiency,
-        isAvailable: technician.isAvailable
+        isAvailable: technician.isAvailable,
       },
       activeTests,
-      availableSlots: technician.maxConcurrentTests - technician.currentWorkload,
-      canAcceptMore: technician.canAcceptMoreTests()
+      availableSlots:
+        technician.maxConcurrentTests - technician.currentWorkload,
+      canAcceptMore: technician.canAcceptMoreTests(),
     };
 
     return NextResponse.json(workloadInfo);
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -105,18 +106,15 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       technician: updatedTechnician,
-      message: `Workload ${action}ed successfully`
+      message: `Workload ${action}ed successfully`,
     });
   } catch (error: any) {
     console.error('Error updating workload:', error);
-    
+
     if (error.message.includes('maximum workload')) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -7,7 +7,7 @@ import LabTechnician from '@/models/LabTechnician';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
     const specialization = searchParams.get('specialization');
     const availableOnly = searchParams.get('availableOnly') === 'true';
 
-    let query: any = {};
-    
+    const query: any = {};
+
     if (specialization) {
       query.specialization = specialization;
     }
-    
+
     if (availableOnly) {
       query.isAvailable = true;
       query.currentWorkload = { $lt: '$maxConcurrentTests' };
@@ -43,11 +43,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST 
+// POST
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -55,23 +55,23 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    
+
     const technician = new LabTechnician(body);
     await technician.save();
-    
+
     await technician.populate('user', 'name email phone');
 
     return NextResponse.json({ technician }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating lab technician:', error);
-    
+
     if (error.code === 11000) {
       return NextResponse.json(
         { error: 'Employee ID or user already exists' },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

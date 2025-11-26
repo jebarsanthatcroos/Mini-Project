@@ -48,21 +48,23 @@ const LabTechnicianSchema = new Schema<ILabTechnicianDocument>(
       trim: true,
       uppercase: true,
     },
-    specialization: [{
-      type: String,
-      enum: [
-        'HEMATOLOGY',
-        'BIOCHEMISTRY',
-        'MICROBIOLOGY',
-        'IMMUNOLOGY',
-        'PATHOLOGY',
-        'URINALYSIS',
-        'ENDOCRINOLOGY',
-        'TOXICOLOGY',
-        'MOLECULAR_DIAGNOSTICS',
-        'GENERAL',
-      ],
-    }],
+    specialization: [
+      {
+        type: String,
+        enum: [
+          'HEMATOLOGY',
+          'BIOCHEMISTRY',
+          'MICROBIOLOGY',
+          'IMMUNOLOGY',
+          'PATHOLOGY',
+          'URINALYSIS',
+          'ENDOCRINOLOGY',
+          'TOXICOLOGY',
+          'MOLECULAR_DIAGNOSTICS',
+          'GENERAL',
+        ],
+      },
+    ],
     licenseNumber: {
       type: String,
       trim: true,
@@ -70,10 +72,12 @@ const LabTechnicianSchema = new Schema<ILabTechnicianDocument>(
     licenseExpiry: {
       type: Date,
     },
-    qualifications: [{
-      type: String,
-      trim: true,
-    }],
+    qualifications: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     yearsOfExperience: {
       type: Number,
       required: [true, 'Years of experience is required'],
@@ -139,7 +143,7 @@ LabTechnicianSchema.methods.updateWorkload = async function (
   this: ILabTechnicianDocument
 ): Promise<ILabTechnicianDocument> {
   const LabTestRequest = model('LabTestRequest');
-  
+
   const activeTestCount = await LabTestRequest.countDocuments({
     labTechnician: this._id,
     status: { $in: ['SAMPLE_COLLECTED', 'IN_PROGRESS'] },
@@ -180,11 +184,11 @@ LabTechnicianSchema.methods.canAcceptMoreTests = function (
 
 // Static method to find available technicians
 LabTechnicianSchema.statics.findAvailable = function (specialization?: string) {
-  const query: any = { 
+  const query: any = {
     isAvailable: true,
-    currentWorkload: { $lt: '$maxConcurrentTests' }
+    currentWorkload: { $lt: '$maxConcurrentTests' },
   };
-  
+
   if (specialization) {
     query.specialization = specialization;
   }
@@ -195,23 +199,25 @@ LabTechnicianSchema.statics.findAvailable = function (specialization?: string) {
 };
 
 // Static method to find technicians by specialization
-LabTechnicianSchema.statics.findBySpecialization = function (specialization: string) {
-  return this.find({ 
+LabTechnicianSchema.statics.findBySpecialization = function (
+  specialization: string
+) {
+  return this.find({
     specialization,
-    isAvailable: true 
+    isAvailable: true,
   })
-  .populate('user')
-  .sort({ performanceScore: -1, currentWorkload: 1 });
+    .populate('user')
+    .sort({ performanceScore: -1, currentWorkload: 1 });
 };
 
 // Static method to update all technicians' workloads
 LabTechnicianSchema.statics.updateAllWorkloads = async function () {
   const technicians = await this.find({});
-  
+
   for (const tech of technicians) {
     await tech.updateWorkload();
   }
-  
+
   return technicians.length;
 };
 
@@ -225,16 +231,20 @@ LabTechnicianSchema.index({ currentWorkload: 1 });
 LabTechnicianSchema.index({ performanceScore: -1 });
 
 // Compound index for finding available technicians efficiently
-LabTechnicianSchema.index({ 
-  isAvailable: 1, 
-  specialization: 1, 
-  currentWorkload: 1 
+LabTechnicianSchema.index({
+  isAvailable: 1,
+  specialization: 1,
+  currentWorkload: 1,
 });
 
 // Pre-save middleware to validate license
 LabTechnicianSchema.pre('save', function (next) {
   if (this.licenseNumber && !this.licenseExpiry) {
-    next(new Error('License expiry date is required when license number is provided'));
+    next(
+      new Error(
+        'License expiry date is required when license number is provided'
+      )
+    );
   }
   next();
 });

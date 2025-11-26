@@ -13,7 +13,7 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !['ADMIN', 'LABTECH'].includes(session.user.role || '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await connectDB();
 
     const body = await request.json();
-    
+
     // Remove fields that shouldn't be updated directly
     const { user, employeeId, _id, createdAt, updatedAt, ...updateData } = body;
 
@@ -73,7 +73,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ technician });
   } catch (error: any) {
     console.error('Error updating lab technician:', error);
-    
+
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map((err: any) => err.message);
       return NextResponse.json(
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-undef */
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

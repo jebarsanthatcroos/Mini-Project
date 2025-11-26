@@ -12,7 +12,7 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -26,7 +26,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       .populate('test');
 
     if (!testRequest) {
-      return NextResponse.json({ error: 'Test request not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Test request not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ testRequest });
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -54,7 +57,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const testRequest = await LabTestRequest.findById(params.id);
 
     if (!testRequest) {
-      return NextResponse.json({ error: 'Test request not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Test request not found' },
+        { status: 404 }
+      );
     }
 
     // Update status if provided
@@ -70,12 +76,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.priority) testRequest.priority = body.priority;
 
     await testRequest.save();
-    
+
     await testRequest.populate([
       { path: 'patient', select: 'name email' },
       { path: 'doctor', select: 'name email' },
       { path: 'labTechnician', select: 'name email employeeId' },
-      { path: 'test' }
+      { path: 'test' },
     ]);
 
     return NextResponse.json({ testRequest });

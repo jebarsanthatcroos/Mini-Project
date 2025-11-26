@@ -161,7 +161,7 @@ LabTestRequestSchema.virtual('isOverdue').get(function (
   const test = this.populated('test') || this.test;
   if (test && typeof test === 'object' && 'duration' in test) {
     const expectedCompletion = new Date(this.requestedDate);
-     
+
     expectedCompletion.setMinutes(
       expectedCompletion.getMinutes() + (test as any).duration
     );

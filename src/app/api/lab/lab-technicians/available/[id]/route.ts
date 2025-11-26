@@ -12,7 +12,7 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -21,10 +21,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     const { searchParams } = new URL(request.url);
     const includeWorkload = searchParams.get('includeWorkload') === 'true';
-    const maxWorkload = searchParams.get('maxWorkload') ? 
-      parseInt(searchParams.get('maxWorkload')!) : undefined;
+    const maxWorkload = searchParams.get('maxWorkload')
+      ? parseInt(searchParams.get('maxWorkload')!)
+      : undefined;
 
-    
     let specialization: string | undefined;
 
     try {
@@ -42,8 +42,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Build query with proper type handling
-    const query: any = { 
-      isAvailable: true
+    const query: any = {
+      isAvailable: true,
     };
 
     // Add specialization filter if available and valid
@@ -68,21 +68,23 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Add workload conditions - using aggregation pipeline for computed fields
-    let techniciansQuery = LabTechnician.aggregate([
+    const techniciansQuery = LabTechnician.aggregate([
       { $match: query },
       {
         $addFields: {
-          availableSlots: { $subtract: ['$maxConcurrentTests', '$currentWorkload'] },
+          availableSlots: {
+            $subtract: ['$maxConcurrentTests', '$currentWorkload'],
+          },
           canAcceptMore: {
             $and: [
               { $eq: ['$isAvailable', true] },
-              { $lt: ['$currentWorkload', '$maxConcurrentTests'] }
-            ]
-          }
-        }
+              { $lt: ['$currentWorkload', '$maxConcurrentTests'] },
+            ],
+          },
+        },
       },
       { $match: { canAcceptMore: true } },
-      { $sort: { currentWorkload: 1, performanceScore: -1 } }
+      { $sort: { currentWorkload: 1, performanceScore: -1 } },
     ]);
 
     const technicians = await techniciansQuery;
@@ -90,21 +92,21 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Populate user data for each technician
     const populatedTechnicians = await LabTechnician.populate(technicians, {
       path: 'user',
-      select: 'name email phone profileImage'
+      select: 'name email phone profileImage',
     });
 
     // Filter fields based on includeWorkload flag
-    const filteredTechnicians = includeWorkload 
+    const filteredTechnicians = includeWorkload
       ? populatedTechnicians
       : populatedTechnicians.map((tech: any) => {
           const { currentWorkload, maxConcurrentTests, ...rest } = tech;
           return rest;
         });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       technicians: filteredTechnicians,
       specialization: specialization || 'GENERAL',
-      totalAvailable: filteredTechnicians.length 
+      totalAvailable: filteredTechnicians.length,
     });
   } catch (error) {
     console.error('Error fetching available technicians:', error);
@@ -119,8 +121,11 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session || !['LAB_MANAGER', 'DOCTOR', 'ADMIN'].includes(session.user.role||'')) {
+
+    if (
+      !session ||
+      !['LAB_MANAGER', 'DOCTOR', 'ADMIN'].includes(session.user.role || '')
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -168,21 +173,18 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     await updatedTechnician.populate('user', 'name email phone profileImage');
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       technician: updatedTechnician,
       action,
-      message: `Test ${action}ed successfully` 
+      message: `Test ${action}ed successfully`,
     });
   } catch (error: any) {
     console.error('Error updating technician workload:', error);
-    
+
     if (error.message.includes('cannot accept more tests')) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

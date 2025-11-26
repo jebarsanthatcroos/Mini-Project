@@ -148,7 +148,6 @@ const OrderSchema = new Schema<IOrderDocument>(
     timestamps: true,
     toJSON: {
       transform: function (doc, ret) {
-         
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),

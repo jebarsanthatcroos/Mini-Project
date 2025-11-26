@@ -5,7 +5,7 @@ export interface ILabDashboard {
   totalTestsCompleted: number;
   testsToday: number;
   pendingTests: number;
-  averageTurnaroundTime: number; 
+  averageTurnaroundTime: number;
   criticalFindings: number;
   lastActivity: Date;
 }

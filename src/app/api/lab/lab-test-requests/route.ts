@@ -9,7 +9,7 @@ import LabTestRequest from '@/models/LabTestRequest';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -21,16 +21,16 @@ export async function GET(request: NextRequest) {
     const patientId = searchParams.get('patientId');
     const technicianId = searchParams.get('technicianId');
 
-    let query: any = {};
-    
+    const query: any = {};
+
     if (status) {
       query.status = status;
     }
-    
+
     if (patientId) {
       query.patient = patientId;
     }
-    
+
     if (technicianId) {
       query.labTechnician = technicianId;
     }
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !['DOCTOR', 'ADMIN'].includes(session.user.role || '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -64,17 +64,17 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    
+
     const testRequest = new LabTestRequest({
       ...body,
-      doctor: session.user.id
+      doctor: session.user.id,
     });
-    
+
     await testRequest.save();
-    
+
     await testRequest.populate([
       { path: 'patient', select: 'name email' },
-      { path: 'test' }
+      { path: 'test' },
     ]);
 
     return NextResponse.json({ testRequest }, { status: 201 });

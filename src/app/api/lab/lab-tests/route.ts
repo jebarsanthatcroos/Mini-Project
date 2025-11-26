@@ -13,12 +13,12 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const activeOnly = searchParams.get('activeOnly') !== 'false';
 
-    let query: any = {};
-    
+    const query: any = {};
+
     if (category) {
       query.category = category;
     }
-    
+
     if (activeOnly) {
       query.isActive = true;
     }
@@ -39,29 +39,29 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session || !['ADMIN', 'DOCTOR'].includes(session.user.role||'')) {
+
+    if (!session || !['ADMIN', 'DOCTOR'].includes(session.user.role || '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
 
     const body = await request.json();
-    
+
     const test = new LabTest(body);
     await test.save();
 
     return NextResponse.json({ test }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating lab test:', error);
-    
+
     if (error.code === 11000) {
       return NextResponse.json(
         { error: 'Test name already exists in this category' },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

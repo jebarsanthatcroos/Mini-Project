@@ -6,6 +6,9 @@ export function isDefined<T>(value: T | undefined | null): value is T {
   return value !== undefined && value !== null;
 }
 
-export function ensureString(value: string | undefined, defaultValue: string = ''): string {
+export function ensureString(
+  value: string | undefined,
+  defaultValue: string = ''
+): string {
   return value || defaultValue;
 }

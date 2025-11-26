@@ -7,7 +7,7 @@ import LabTechnician from '@/models/LabTechnician';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const specialization = searchParams.get('specialization');
 
-    let query: any = { 
-      isAvailable: true
+    const query: any = {
+      isAvailable: true,
     };
-    
+
     if (specialization) {
       query.specialization = specialization;
     }
