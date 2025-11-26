@@ -1,34 +1,55 @@
-import { Schema, model, models, Document, Types } from "mongoose";
+/* eslint-disable prefer-const */
+import { Schema, model, models, Document, Types } from 'mongoose';
 
 export interface IPharmacy {
   name: string;
-  address: string;
-  phone: string;
-  email?: string;
-  pharmacistName: string;
-  licenseNumber: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  contact: {
+    phone: string;
+    email?: string;
+    emergencyPhone?: string;
+  };
   operatingHours: {
-    open: string;
-    close: string;
+    Monday: string;
+    Tuesday: string;
+    Wednesday: string;
+    Thursday: string;
+    Friday: string;
+    Saturday: string;
+    Sunday: string;
   };
   services: string[];
+  pharmacists?: Array<{
+    name: string;
+    licenseNumber: string;
+  }>;
+  inventory?: {
+    totalProducts: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+  };
+  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+  is24Hours: boolean;
   description?: string;
-  status: 'active' | 'inactive' | 'suspended';
   createdBy: Types.ObjectId;
   website?: string;
-  emergencyContact?: string;
-  insuranceProviders?: string[];
 }
 
 export interface IPharmacyDocument extends IPharmacy, Document {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Virtuals
   isOpen: boolean;
   formattedHours: string;
-  
+
   // Methods
   isActive(): boolean;
   hasService(service: string): boolean;
@@ -36,119 +57,232 @@ export interface IPharmacyDocument extends IPharmacy, Document {
 
 const PharmacySchema = new Schema<IPharmacyDocument>(
   {
-    name: { 
-      type: String, 
-      required: [true, "Pharmacy name is required"], 
-      trim: true,
-      minlength: [2, "Pharmacy name must be at least 2 characters"],
-      maxlength: [100, "Pharmacy name cannot exceed 100 characters"]
-    },
-    address: { 
-      type: String, 
-      required: [true, "Address is required"], 
-      trim: true,
-      maxlength: [200, "Address cannot exceed 200 characters"]
-    },
-    phone: { 
-      type: String, 
-      required: [true, "Phone number is required"],
-      match: [/^\+?[\d\s\-()]+$/, "Please enter a valid phone number"]
-    },
-    email: { 
+    name: {
       type: String,
-      lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid email"]
-    },
-    pharmacistName: { 
-      type: String, 
-      required: [true, "Pharmacist name is required"],
+      required: [true, 'Pharmacy name is required'],
       trim: true,
-      maxlength: [100, "Pharmacist name cannot exceed 100 characters"]
+      minlength: [2, 'Pharmacy name must be at least 2 characters'],
+      maxlength: [100, 'Pharmacy name cannot exceed 100 characters'],
     },
-    licenseNumber: { 
-      type: String, 
-      required: [true, "License number is required"],
-      unique: true, // This automatically creates an index
-      uppercase: true,
-      trim: true
+    address: {
+      street: {
+        type: String,
+        required: [true, 'Street address is required'],
+        trim: true,
+        maxlength: [100, 'Street address cannot exceed 100 characters'],
+      },
+      city: {
+        type: String,
+        required: [true, 'City is required'],
+        trim: true,
+        maxlength: [50, 'City cannot exceed 50 characters'],
+      },
+      state: {
+        type: String,
+        required: [true, 'State is required'],
+        trim: true,
+        maxlength: [50, 'State cannot exceed 50 characters'],
+      },
+      zipCode: {
+        type: String,
+        required: [true, 'ZIP code is required'],
+        trim: true,
+        // More flexible ZIP code validation
+        validate: {
+          validator: function (zip: string) {
+            // Allow various ZIP code formats including international
+            return /^[A-Z0-9\-\s]{3,10}$/i.test(zip);
+          },
+          message: 'Please enter a valid ZIP/postal code',
+        },
+        maxlength: [10, 'ZIP code cannot exceed 10 characters'],
+      },
+      country: {
+        type: String,
+        required: [true, 'Country is required'],
+        default: 'US',
+        trim: true,
+      },
+    },
+    contact: {
+      phone: {
+        type: String,
+        required: [true, 'Phone number is required'],
+        match: [/^\+?[\d\s\-()]+$/, 'Please enter a valid phone number'],
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        match: [
+          /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+          'Please enter a valid email',
+        ],
+      },
+      emergencyPhone: {
+        type: String,
+        match: [/^\+?[\d\s\-()]+$/, 'Please enter a valid phone number'],
+      },
     },
     operatingHours: {
-      open: {
+      Monday: {
         type: String,
-        required: true,
-        default: "09:00",
-        match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"]
+        default: '9:00 AM - 6:00 PM',
+        trim: true,
       },
-      close: {
+      Tuesday: {
         type: String,
-        required: true,
-        default: "18:00",
-        match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time in HH:MM format"]
-      }
+        default: '9:00 AM - 6:00 PM',
+        trim: true,
+      },
+      Wednesday: {
+        type: String,
+        default: '9:00 AM - 6:00 PM',
+        trim: true,
+      },
+      Thursday: {
+        type: String,
+        default: '9:00 AM - 6:00 PM',
+        trim: true,
+      },
+      Friday: {
+        type: String,
+        default: '9:00 AM - 6:00 PM',
+        trim: true,
+      },
+      Saturday: {
+        type: String,
+        default: '9:00 AM - 2:00 PM',
+        trim: true,
+      },
+      Sunday: {
+        type: String,
+        default: 'Closed',
+        trim: true,
+      },
     },
-    services: [{
+    services: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    pharmacists: [
+      {
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        licenseNumber: {
+          type: String,
+          required: true,
+          trim: true,
+          uppercase: true,
+        },
+      },
+    ],
+    inventory: {
+      totalProducts: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      lowStockItems: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      outOfStockItems: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+    status: {
       type: String,
-      trim: true
-    }],
-    description: { 
+      enum: ['ACTIVE', 'INACTIVE', 'MAINTENANCE'],
+      default: 'ACTIVE',
+    },
+    is24Hours: {
+      type: Boolean,
+      default: false,
+    },
+    description: {
       type: String,
       trim: true,
-      maxlength: [500, "Description cannot exceed 500 characters"]
-    },
-    status: { 
-      type: String, 
-      enum: ["active", "inactive", "suspended"], 
-      default: "active" 
+      maxlength: [500, 'Description cannot exceed 500 characters'],
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Created by user is required"]
+      ref: 'User',
+      required: [true, 'Created by user is required'],
     },
     website: {
       type: String,
       trim: true,
-      match: [/^https?:\/\/.+\..+$/, "Please enter a valid website URL"]
+      match: [/^https?:\/\/.+\..+$/, 'Please enter a valid website URL'],
     },
-    emergencyContact: {
-      type: String,
-      match: [/^\+?[\d\s\-()]+$/, "Please enter a valid phone number"]
-    },
-    insuranceProviders: [{
-      type: String,
-      trim: true
-    }]
   },
-  { 
+  {
     timestamps: true,
-    toJSON: { 
+    toJSON: {
       virtuals: true,
-      transform: function(doc, ret) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      transform: function (doc, ret) {
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),
-          ...rest
+          ...rest,
         };
-      }
+      },
     },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
 
+// ... rest of your virtuals, methods, and indexes remain the same ...
+
 // Virtual for checking if pharmacy is currently open
-PharmacySchema.virtual('isOpen').get(function(this: IPharmacyDocument) {
+PharmacySchema.virtual('isOpen').get(function (this: IPharmacyDocument) {
   try {
+    if (this.is24Hours) {
+      return true;
+    }
+
     const now = new Date();
-    const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
-                       now.getMinutes().toString().padStart(2, '0');
-    
-    // Add null checks for operatingHours
-    if (!this.operatingHours?.open || !this.operatingHours?.close) {
+    const currentDay = now.toLocaleDateString('en-Sri Lanka', {
+      weekday: 'long',
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const currentTime = now.toLocaleTimeString('en-Sri Lanka', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const todayHours =
+      this.operatingHours[currentDay as keyof typeof this.operatingHours];
+
+    if (!todayHours || todayHours === 'Closed') {
       return false;
     }
-    
-    return currentTime >= this.operatingHours.open && currentTime <= this.operatingHours.close;
+
+    const [openTime, closeTime] = todayHours.split(' - ');
+
+    const parseTime = (timeStr: string) => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+
+      return hours * 60 + minutes;
+    };
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const openMinutes = parseTime(openTime);
+    const closeMinutes = parseTime(closeTime);
+
+    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
   } catch (error) {
     console.error('Error calculating isOpen:', error);
     return false;
@@ -156,84 +290,69 @@ PharmacySchema.virtual('isOpen').get(function(this: IPharmacyDocument) {
 });
 
 // Virtual for formatted operating hours
-PharmacySchema.virtual('formattedHours').get(function(this: IPharmacyDocument) {
-  try {
-    const formatTime = (time: string) => {
-      // Add null/undefined check and validate time format
-      if (!time || typeof time !== 'string') {
-        return 'N/A';
-      }
-      
-      const timeParts = time.split(':');
-      if (timeParts.length !== 2) {
-        return 'N/A';
-      }
-      
-      const [hours, minutes] = timeParts;
-      const hour = parseInt(hours);
-      
-      // Validate hour and minutes
-      if (isNaN(hour) || hour < 0 || hour > 23 || isNaN(parseInt(minutes))) {
-        return 'N/A';
-      }
-      
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const formattedHour = hour % 12 || 12;
-      return `${formattedHour}:${minutes} ${ampm}`;
-    };
-
-    // Add null checks for operatingHours
-    if (!this.operatingHours?.open || !this.operatingHours?.close) {
-      return 'N/A - N/A';
-    }
-
-    return `${formatTime(this.operatingHours.open)} - ${formatTime(this.operatingHours.close)}`;
-  } catch (error) {
-    console.error('Error formatting hours:', error);
-    return 'N/A - N/A';
+PharmacySchema.virtual('formattedHours').get(function (
+  this: IPharmacyDocument
+) {
+  if (this.is24Hours) {
+    return '24/7';
   }
+
+  const currentDay = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+  });
+  return (
+    this.operatingHours[currentDay as keyof typeof this.operatingHours] ||
+    'Closed'
+  );
 });
 
 // Method to check if pharmacy is active
-PharmacySchema.methods.isActive = function(this: IPharmacyDocument): boolean {
-  return this.status === 'active';
+PharmacySchema.methods.isActive = function (this: IPharmacyDocument): boolean {
+  return this.status === 'ACTIVE';
 };
 
 // Method to check if pharmacy offers a specific service
-PharmacySchema.methods.hasService = function(this: IPharmacyDocument, service: string): boolean {
+PharmacySchema.methods.hasService = function (
+  this: IPharmacyDocument,
+  service: string
+): boolean {
   return this.services.includes(service);
 };
 
 // Indexes for better query performance
-// REMOVED DUPLICATE: PharmacySchema.index({ licenseNumber: 1 }, { unique: true });
-// The unique: true on licenseNumber already creates this index
-PharmacySchema.index({ name: 'text', address: 'text', pharmacistName: 'text' });
+PharmacySchema.index({
+  name: 'text',
+  'address.city': 'text',
+  'address.state': 'text',
+});
 PharmacySchema.index({ status: 1 });
 PharmacySchema.index({ createdBy: 1 });
-PharmacySchema.index({ "operatingHours.open": 1, "operatingHours.close": 1 });
+PharmacySchema.index({ is24Hours: 1 });
 PharmacySchema.index({ createdAt: -1 });
+PharmacySchema.index({ 'pharmacists.licenseNumber': 1 });
 
 // Static method to find active pharmacies
-PharmacySchema.statics.findActive = function() {
-  return this.find({ status: 'active' });
+PharmacySchema.statics.findActive = function () {
+  return this.find({ status: 'ACTIVE' });
 };
 
 // Static method to find pharmacies by service
-PharmacySchema.statics.findByService = function(service: string) {
-  return this.find({ 
-    status: 'active', 
-    services: { $in: [service] } 
+PharmacySchema.statics.findByService = function (service: string) {
+  return this.find({
+    status: 'ACTIVE',
+    services: { $in: [service] },
   });
 };
 
-// Middleware to validate operating hours
-PharmacySchema.pre('save', function(next) {
-  if (this.operatingHours.open >= this.operatingHours.close) {
-    next(new Error('Opening time must be before closing time'));
-  }
-  next();
-});
+// Static method to find 24/7 pharmacies
+PharmacySchema.statics.find24Hours = function () {
+  return this.find({
+    status: 'ACTIVE',
+    is24Hours: true,
+  });
+};
 
-const Pharmacy = models.Pharmacy || model<IPharmacyDocument>("Pharmacy", PharmacySchema);
+const Pharmacy =
+  models.Pharmacy || model<IPharmacyDocument>('Pharmacy', PharmacySchema);
 
 export default Pharmacy;

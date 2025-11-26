@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
-import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import User, { IUserDocument, UserRole } from "@/models/User";
-import { IUserCredentials } from "@/types/next-auth";
+import { NextAuthOptions } from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
+import GitHubProvider from 'next-auth/providers/github';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
+import { connectDB } from '@/lib/mongodb';
+import User, { IUserDocument, UserRole } from '@/models/User';
+import { IUserCredentials } from '@/types/next-auth';
 
 if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error("NEXTAUTH_SECRET is not set");
+  throw new Error('NEXTAUTH_SECRET is not set');
 }
 
 export const authOptions: NextAuthOptions = {
@@ -23,42 +23,49 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GITHUB_SECRET!,
       authorization: {
         params: {
-          scope: "read:user user:email",
+          scope: 'read:user user:email',
         },
       },
     }),
     CredentialsProvider({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials): Promise<IUserCredentials | null> {
         try {
           if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email and password are required");
+            throw new Error('Email and password are required');
           }
 
           await connectDB();
 
-          const user = await User.findOne({ email: credentials.email }).select('+password') as IUserDocument | null;
-          
+          const user = (await User.findOne({ email: credentials.email }).select(
+            '+password'
+          )) as IUserDocument | null;
+
           if (!user) {
-            throw new Error("No user found with this email");
+            throw new Error('No user found with this email');
           }
 
           if (!user.password) {
-            throw new Error("This account uses social login. Please sign in with Google or GitHub.");
+            throw new Error(
+              'This account uses social login. Please sign in with Google or GitHub.'
+            );
           }
 
-          const isValid = await bcrypt.compare(credentials.password, user.password);
+          const isValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
           if (!isValid) {
-            throw new Error("Invalid password");
+            throw new Error('Invalid password');
           }
 
           // Update last login
-          await User.findByIdAndUpdate(user._id, { 
-            lastLogin: new Date() 
+          await User.findByIdAndUpdate(user._id, {
+            lastLogin: new Date(),
           });
 
           // Return user data without password
@@ -79,8 +86,8 @@ export const authOptions: NextAuthOptions = {
 
           return userData;
         } catch (error: any) {
-          console.error("Auth error:", error.message);
-          throw new Error(error.message || "Authentication failed");
+          console.error('Auth error:', error.message);
+          throw new Error(error.message || 'Authentication failed');
         }
       },
     }),
@@ -90,27 +97,29 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       try {
         await connectDB();
-        
-        if (account?.provider !== "credentials") {
+
+        if (account?.provider !== 'credentials') {
           // Handle GitHub email scope issues
-          if (account?.provider === "github" && !user.email) {
-            throw new Error("GitHub did not provide an email address. Please ensure your GitHub account has a public email or grant email access.");
+          if (account?.provider === 'github' && !user.email) {
+            throw new Error(
+              'GitHub did not provide an email address. Please ensure your GitHub account has a public email or grant email access.'
+            );
           }
 
           const existingUser = await User.findOne({ email: user.email });
-          
+
           if (!existingUser) {
             // Create new user for OAuth
             await User.create({
               name: user.name,
               email: user.email,
               image: user.image,
-              role: "USER" as UserRole,
-              phone: user.phone || "",
-              department: user.department || "",
-              specialization: user.specialization || "",
-              address: user.address || "",
-              bio: user.bio || "",
+              role: 'USER' as UserRole,
+              phone: user.phone || '',
+              department: user.department || '',
+              specialization: user.specialization || '',
+              address: user.address || '',
+              bio: user.bio || '',
               isActive: true,
               lastLogin: new Date(),
             });
@@ -118,12 +127,12 @@ export const authOptions: NextAuthOptions = {
             // Update existing user with OAuth data and last login
             await User.updateOne(
               { email: user.email },
-              { 
-                $set: { 
+              {
+                $set: {
                   name: user.name,
                   image: user.image,
                   lastLogin: new Date(),
-                } 
+                },
               }
             );
           }
@@ -132,25 +141,25 @@ export const authOptions: NextAuthOptions = {
           if (user.email) {
             await User.updateOne(
               { email: user.email },
-              { 
-                $set: { 
+              {
+                $set: {
                   lastLogin: new Date(),
-                } 
+                },
               }
             );
           }
         }
-        
+
         return true;
       } catch (error: any) {
-        console.error("SignIn callback error:", error.message);
+        console.error('SignIn callback error:', error.message);
         return `/auth/error?error=${encodeURIComponent(error.message)}`;
       }
     },
 
     async jwt({ token, user, account, trigger, session }) {
       // Handle session update trigger
-      if (trigger === "update" && session?.user) {
+      if (trigger === 'update' && session?.user) {
         token.name = session.user.name;
         token.phone = session.user.phone;
         token.department = session.user.department;
@@ -162,7 +171,7 @@ export const authOptions: NextAuthOptions = {
       if (account) {
         token.accessToken = account.access_token;
       }
-      
+
       // Add user info to token on sign in
       if (user) {
         token.id = user.id;
@@ -199,7 +208,7 @@ export const authOptions: NextAuthOptions = {
             token.lastLogin = dbUser.lastLogin;
           }
         } catch (error) {
-          console.error("JWT callback error:", error);
+          console.error('JWT callback error:', error);
         }
       }
 
@@ -222,17 +231,17 @@ export const authOptions: NextAuthOptions = {
         isActive: token.isActive as boolean,
         lastLogin: token.lastLogin as Date,
       };
-      
+
       session.accessToken = token.accessToken as string;
-      
+
       return session;
     },
 
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
-    }
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
+    },
   },
 
   pages: {
@@ -241,11 +250,11 @@ export const authOptions: NextAuthOptions = {
   },
 
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === 'development',
 
   secret: process.env.NEXTAUTH_SECRET,
 };

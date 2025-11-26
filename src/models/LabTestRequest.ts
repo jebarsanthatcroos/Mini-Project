@@ -1,14 +1,14 @@
-import { Schema, model, models, Document, Types } from "mongoose";
+import { Schema, model, models, Document, Types } from 'mongoose';
 
-export type TestStatus = 
-  | "REQUESTED"
-  | "SAMPLE_COLLECTED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "VERIFIED"
-  | "CANCELLED";
+export type TestStatus =
+  | 'REQUESTED'
+  | 'SAMPLE_COLLECTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'VERIFIED'
+  | 'CANCELLED';
 
-export type Priority = "LOW" | "NORMAL" | "HIGH" | "STAT";
+export type Priority = 'LOW' | 'NORMAL' | 'HIGH' | 'STAT';
 
 export interface ILabTestRequest {
   patient: Types.ObjectId;
@@ -34,11 +34,11 @@ export interface ILabTestRequestDocument extends ILabTestRequest, Document {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Virtuals
   turnaroundTime: number;
   isOverdue: boolean;
-  
+
   // Methods
   updateStatus(newStatus: TestStatus): Promise<ILabTestRequestDocument>;
   canBeCancelled(): boolean;
@@ -48,136 +48,160 @@ const LabTestRequestSchema = new Schema<ILabTestRequestDocument>(
   {
     patient: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Patient is required"]
+      ref: 'User',
+      required: [true, 'Patient is required'],
     },
     doctor: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Doctor is required"]
+      ref: 'User',
+      required: [true, 'Doctor is required'],
     },
     labTechnician: {
       type: Schema.Types.ObjectId,
-      ref: "User"
+      ref: 'User',
     },
     test: {
       type: Schema.Types.ObjectId,
-      ref: "LabTest",
-      required: [true, "Test is required"]
+      ref: 'LabTest',
+      required: [true, 'Test is required'],
     },
     status: {
       type: String,
-      enum: ["REQUESTED", "SAMPLE_COLLECTED", "IN_PROGRESS", "COMPLETED", "VERIFIED", "CANCELLED"],
-      default: "REQUESTED"
+      enum: [
+        'REQUESTED',
+        'SAMPLE_COLLECTED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'VERIFIED',
+        'CANCELLED',
+      ],
+      default: 'REQUESTED',
     },
     priority: {
       type: String,
-      enum: ["LOW", "NORMAL", "HIGH", "STAT"],
-      default: "NORMAL"
+      enum: ['LOW', 'NORMAL', 'HIGH', 'STAT'],
+      default: 'NORMAL',
     },
     requestedDate: {
       type: Date,
-      default: Date.now
+      default: Date.now,
     },
     sampleCollectedDate: {
-      type: Date
+      type: Date,
     },
     startedDate: {
-      type: Date
+      type: Date,
     },
     completedDate: {
-      type: Date
+      type: Date,
     },
     verifiedDate: {
-      type: Date
+      type: Date,
     },
     results: {
       type: String,
-      trim: true
+      trim: true,
     },
     findings: {
       type: String,
       trim: true,
-      maxlength: [2000, "Findings cannot exceed 2000 characters"]
+      maxlength: [2000, 'Findings cannot exceed 2000 characters'],
     },
     notes: {
       type: String,
       trim: true,
-      maxlength: [1000, "Notes cannot exceed 1000 characters"]
+      maxlength: [1000, 'Notes cannot exceed 1000 characters'],
     },
-    attachments: [{
-      type: String // URLs to attached files
-    }],
+    attachments: [
+      {
+        type: String, // URLs to attached files
+      },
+    ],
     isCritical: {
       type: Boolean,
-      default: false
+      default: false,
     },
     referral: {
       type: String,
-      trim: true
-    }
+      trim: true,
+    },
   },
   {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
 
 // Virtual for turnaround time (in hours)
-LabTestRequestSchema.virtual('turnaroundTime').get(function(this: ILabTestRequestDocument) {
+LabTestRequestSchema.virtual('turnaroundTime').get(function (
+  this: ILabTestRequestDocument
+) {
   if (this.completedDate && this.requestedDate) {
-    return (this.completedDate.getTime() - this.requestedDate.getTime()) / (1000 * 60 * 60);
+    return (
+      (this.completedDate.getTime() - this.requestedDate.getTime()) /
+      (1000 * 60 * 60)
+    );
   }
   return null;
 });
 
 // Virtual to check if test is overdue
-LabTestRequestSchema.virtual('isOverdue').get(function(this: ILabTestRequestDocument) {
-  if (this.status === "CANCELLED" || this.status === "COMPLETED" || this.status === "VERIFIED") {
+LabTestRequestSchema.virtual('isOverdue').get(function (
+  this: ILabTestRequestDocument
+) {
+  if (
+    this.status === 'CANCELLED' ||
+    this.status === 'COMPLETED' ||
+    this.status === 'VERIFIED'
+  ) {
     return false;
   }
-  
+
   const test = this.populated('test') || this.test;
   if (test && typeof test === 'object' && 'duration' in test) {
     const expectedCompletion = new Date(this.requestedDate);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expectedCompletion.setMinutes(expectedCompletion.getMinutes() + (test as any).duration);
+     
+    expectedCompletion.setMinutes(
+      expectedCompletion.getMinutes() + (test as any).duration
+    );
     return new Date() > expectedCompletion;
   }
-  
+
   return false;
 });
 
 // Method to update status with timestamps
-LabTestRequestSchema.methods.updateStatus = async function(
-  this: ILabTestRequestDocument, 
+LabTestRequestSchema.methods.updateStatus = async function (
+  this: ILabTestRequestDocument,
   newStatus: TestStatus
 ): Promise<ILabTestRequestDocument> {
   this.status = newStatus;
   const now = new Date();
-  
+
   switch (newStatus) {
-    case "SAMPLE_COLLECTED":
+    case 'SAMPLE_COLLECTED':
       this.sampleCollectedDate = now;
       break;
-    case "IN_PROGRESS":
+    case 'IN_PROGRESS':
       this.startedDate = now;
       break;
-    case "COMPLETED":
+    case 'COMPLETED':
       this.completedDate = now;
       break;
-    case "VERIFIED":
+    case 'VERIFIED':
       this.verifiedDate = now;
       break;
   }
-  
+
   return await this.save();
 };
 
 // Method to check if test can be cancelled
-LabTestRequestSchema.methods.canBeCancelled = function(this: ILabTestRequestDocument): boolean {
-  return this.status === "REQUESTED" || this.status === "SAMPLE_COLLECTED";
+LabTestRequestSchema.methods.canBeCancelled = function (
+  this: ILabTestRequestDocument
+): boolean {
+  return this.status === 'REQUESTED' || this.status === 'SAMPLE_COLLECTED';
 };
 
 // Indexes for better query performance
@@ -190,27 +214,29 @@ LabTestRequestSchema.index({ requestedDate: -1 });
 LabTestRequestSchema.index({ test: 1 });
 
 // Static method to find tests by status
-LabTestRequestSchema.statics.findByStatus = function(status: TestStatus) {
+LabTestRequestSchema.statics.findByStatus = function (status: TestStatus) {
   return this.find({ status }).populate('patient test labTechnician');
 };
 
 // Static method to find overdue tests
-LabTestRequestSchema.statics.findOverdueTests = function() {
-  return this.find({ 
-    status: { $in: ["REQUESTED", "SAMPLE_COLLECTED", "IN_PROGRESS"] },
-    requestedDate: { $lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Older than 24 hours
+LabTestRequestSchema.statics.findOverdueTests = function () {
+  return this.find({
+    status: { $in: ['REQUESTED', 'SAMPLE_COLLECTED', 'IN_PROGRESS'] },
+    requestedDate: { $lt: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Older than 24 hours
   }).populate('patient test');
 };
 
 // Middleware to populate test before virtual calculation
-LabTestRequestSchema.pre('find', function() {
+LabTestRequestSchema.pre('find', function () {
   this.populate('test');
 });
 
-LabTestRequestSchema.pre('findOne', function() {
+LabTestRequestSchema.pre('findOne', function () {
   this.populate('test');
 });
 
-const LabTestRequest = models.LabTestRequest || model<ILabTestRequestDocument>("LabTestRequest", LabTestRequestSchema);
+const LabTestRequest =
+  models.LabTestRequest ||
+  model<ILabTestRequestDocument>('LabTestRequest', LabTestRequestSchema);
 
 export default LabTestRequest;

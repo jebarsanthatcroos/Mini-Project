@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 const MONGODB_URI = process.env.MONGODB_URI!;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  throw new Error(
+    'Please define the MONGODB_URI environment variable inside .env.local'
+  );
 }
 
 interface MongooseCache {
@@ -37,7 +39,7 @@ export async function connectDB() {
       socketTimeoutMS: 45000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).catch((error) => {
+    cached.promise = mongoose.connect(MONGODB_URI, opts).catch(error => {
       cached.promise = null;
       throw error;
     });
@@ -49,7 +51,9 @@ export async function connectDB() {
   } catch (error) {
     cached.promise = null;
     console.error('❌ MongoDB connection error:', error);
-    throw new Error('Database connection failed. Please check your MongoDB Atlas IP whitelist and connection string.');
+    throw new Error(
+      'Database connection failed. Please check your MongoDB Atlas IP whitelist and connection string.'
+    );
   }
 
   return cached.conn;

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12');
     const pharmacistId = session.user.id;
 
-    const query: any = { 
+    const query: any = {
       pharmacist: pharmacistId,
-      isActive: true 
+      isActive: true,
     };
 
     // Status filter
@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
       const startDate = new Date(date);
       const endDate = new Date(date);
       endDate.setDate(endDate.getDate() + 1);
-      
+
       query.appointmentDate = {
         $gte: startDate,
-        $lt: endDate
+        $lt: endDate,
       };
     }
 
@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
         path: 'patient',
         populate: {
           path: 'userId',
-          select: 'firstName lastName email phone dateOfBirth gender'
-        }
+          select: 'firstName lastName email phone dateOfBirth gender',
+        },
       })
       .populate('pharmacy', 'name address phone')
       .sort({ appointmentDate: 1, appointmentTime: 1 })
@@ -106,11 +106,10 @@ export async function GET(request: NextRequest) {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
-      }
+          pages: Math.ceil(total / limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error('Error fetching appointments:', error);
     return NextResponse.json(
@@ -124,15 +123,22 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    
+
     // Validate required fields
-    const requiredFields = ['patient', 'pharmacy', 'appointmentDate', 'appointmentTime', 'serviceType', 'reason'];
+    const requiredFields = [
+      'patient',
+      'pharmacy',
+      'appointmentDate',
+      'appointmentTime',
+      'serviceType',
+      'reason',
+    ];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -145,7 +151,7 @@ export async function POST(request: NextRequest) {
     // Add pharmacist ID from session
     const appointmentData = {
       ...body,
-      pharmacist: session.user.id
+      pharmacist: session.user.id,
     };
 
     const appointment = new Appointment(appointmentData);
@@ -156,20 +162,22 @@ export async function POST(request: NextRequest) {
         path: 'patient',
         populate: {
           path: 'userId',
-          select: 'firstName lastName email phone dateOfBirth gender'
-        }
+          select: 'firstName lastName email phone dateOfBirth gender',
+        },
       },
       {
         path: 'pharmacy',
-        select: 'name address phone'
-      }
+        select: 'name address phone',
+      },
     ]);
 
-    return NextResponse.json({
-      success: true,
-      data: appointment
-    }, { status: 201 });
-
+    return NextResponse.json(
+      {
+        success: true,
+        data: appointment,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error('Error creating appointment:', error);
     return NextResponse.json(

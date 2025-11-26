@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       'via.placeholder.com',
       'cdn.pixabay.com',
       'source.unsplash.com',
-      'avatars.githubusercontent.com', // <-- add GitHub avatars here
+      'avatars.githubusercontent.com',
     ],
     remotePatterns: [
       {
@@ -47,7 +47,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Other config options can go here
+  reactStrictMode: true,
+
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  },
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  experimental: {
+    serverActions: {},
+  },
 };
 
 export default nextConfig;

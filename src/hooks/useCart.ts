@@ -17,14 +17,18 @@ export const useCart = () => {
 
   useEffect(() => {
     loadCartItems();
-    
+
     // Listen for cart updates from other components
     const handleCartUpdate = (event: CustomEvent) => {
       setCartItems(event.detail || []);
     };
 
     window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
-    return () => window.removeEventListener('cartUpdated', handleCartUpdate as EventListener);
+    return () =>
+      window.removeEventListener(
+        'cartUpdated',
+        handleCartUpdate as EventListener
+      );
   }, []);
 
   const loadCartItems = () => {
@@ -47,27 +51,31 @@ export const useCart = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'anonymous' // Replace with actual user ID
+          'x-user-id': 'anonymous', // Replace with actual user ID
         },
         body: JSON.stringify({
           productId: product._id,
-          quantity
-        })
+          quantity,
+        }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Also update local storage for immediate UI update
         const storedCart = localStorage.getItem('pharmacy-cart');
-        const currentCart: CartItem[] = storedCart ? JSON.parse(storedCart) : [];
-        
-        const existingItemIndex = currentCart.findIndex(item => item._id === product._id);
+        const currentCart: CartItem[] = storedCart
+          ? JSON.parse(storedCart)
+          : [];
+
+        const existingItemIndex = currentCart.findIndex(
+          item => item._id === product._id
+        );
         let updatedCart: CartItem[];
 
         if (existingItemIndex > -1) {
-          updatedCart = currentCart.map((item, index) => 
-            index === existingItemIndex 
+          updatedCart = currentCart.map((item, index) =>
+            index === existingItemIndex
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
@@ -77,7 +85,7 @@ export const useCart = () => {
 
         localStorage.setItem('pharmacy-cart', JSON.stringify(updatedCart));
         setCartItems(updatedCart);
-        
+
         // Dispatch cart update event
         const event = new CustomEvent('cartUpdated', { detail: updatedCart });
         window.dispatchEvent(event);
@@ -101,22 +109,22 @@ export const useCart = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': 'anonymous'
+          'x-user-id': 'anonymous',
         },
         body: JSON.stringify({
           productId,
-          quantity: newQuantity
-        })
+          quantity: newQuantity,
+        }),
       });
 
       if (response.ok) {
-        const updatedCart = cartItems.map(item => 
+        const updatedCart = cartItems.map(item =>
           item._id === productId ? { ...item, quantity: newQuantity } : item
         );
-        
+
         localStorage.setItem('pharmacy-cart', JSON.stringify(updatedCart));
         setCartItems(updatedCart);
-        
+
         const event = new CustomEvent('cartUpdated', { detail: updatedCart });
         window.dispatchEvent(event);
       }
@@ -130,15 +138,15 @@ export const useCart = () => {
       const response = await fetch(`/api/Pharmacist/cart/${productId}`, {
         method: 'DELETE',
         headers: {
-          'x-user-id': 'anonymous'
-        }
+          'x-user-id': 'anonymous',
+        },
       });
 
       if (response.ok) {
         const updatedCart = cartItems.filter(item => item._id !== productId);
         localStorage.setItem('pharmacy-cart', JSON.stringify(updatedCart));
         setCartItems(updatedCart);
-        
+
         const event = new CustomEvent('cartUpdated', { detail: updatedCart });
         window.dispatchEvent(event);
       }
@@ -152,14 +160,14 @@ export const useCart = () => {
       const response = await fetch('/api/Pharmacist/cart', {
         method: 'DELETE',
         headers: {
-          'x-user-id': 'anonymous'
-        }
+          'x-user-id': 'anonymous',
+        },
       });
 
       if (response.ok) {
         localStorage.removeItem('pharmacy-cart');
         setCartItems([]);
-        
+
         const event = new CustomEvent('cartUpdated', { detail: [] });
         window.dispatchEvent(event);
       }
@@ -170,7 +178,10 @@ export const useCart = () => {
 
   const getCartTotal = () => {
     const inStockItems = cartItems.filter(item => item.inStock !== false);
-    return inStockItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return inStockItems.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
   };
 
   const getCartCount = () => {
@@ -186,6 +197,6 @@ export const useCart = () => {
     removeFromCart,
     clearCart,
     getCartTotal,
-    getCartCount
+    getCartCount,
   };
 };

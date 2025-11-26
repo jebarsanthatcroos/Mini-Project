@@ -11,14 +11,11 @@ interface RouteParams {
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -28,17 +25,17 @@ export async function GET(
     const appointment = await Appointment.findOne({
       _id: id,
       pharmacist: session.user.id,
-      isActive: true
+      isActive: true,
     })
-    .populate({
-      path: 'patient',
-      populate: {
-        path: 'userId',
-        select: 'firstName lastName email phone dateOfBirth gender'
-      }
-    })
-    .populate('pharmacy', 'name address phone')
-    .populate('pharmacist', 'firstName lastName email phone');
+      .populate({
+        path: 'patient',
+        populate: {
+          path: 'userId',
+          select: 'firstName lastName email phone dateOfBirth gender',
+        },
+      })
+      .populate('pharmacy', 'name address phone')
+      .populate('pharmacist', 'firstName lastName email phone');
 
     if (!appointment) {
       return NextResponse.json(
@@ -49,9 +46,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: appointment
+      data: appointment,
     });
-
   } catch (error) {
     console.error('Error fetching appointment:', error);
     return NextResponse.json(
@@ -61,14 +57,11 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -80,7 +73,7 @@ export async function PUT(
       {
         _id: id,
         pharmacist: session.user.id,
-        isActive: true
+        isActive: true,
       },
       body,
       { new: true, runValidators: true }
@@ -88,8 +81,8 @@ export async function PUT(
       path: 'patient',
       populate: {
         path: 'userId',
-        select: 'firstName lastName email phone'
-      }
+        select: 'firstName lastName email phone',
+      },
     });
 
     if (!appointment) {
@@ -101,9 +94,8 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      data: appointment
+      data: appointment,
     });
-
   } catch (error: any) {
     console.error('Error updating appointment:', error);
     return NextResponse.json(
@@ -113,14 +105,11 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -131,11 +120,11 @@ export async function DELETE(
       {
         _id: id,
         pharmacist: session.user.id,
-        isActive: true
+        isActive: true,
       },
-      { 
+      {
         isActive: false,
-        status: 'CANCELLED'
+        status: 'CANCELLED',
       },
       { new: true }
     );
@@ -149,9 +138,8 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Appointment cancelled successfully'
+      message: 'Appointment cancelled successfully',
     });
-
   } catch (error) {
     console.error('Error cancelling appointment:', error);
     return NextResponse.json(

@@ -16,29 +16,29 @@ const shopSchema: Schema = new Schema({
   id: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   price: {
     type: Number,
-    required: true
+    required: true,
   },
   image: {
     type: String,
-    required: true
+    required: true,
   },
   description: {
-    type: String
+    type: String,
   },
   inStock: {
     type: Boolean,
-    default: true
+    default: true,
   },
   category: {
-    type: String
+    type: String,
   },
   email: {
     type: String,
@@ -46,11 +46,12 @@ const shopSchema: Schema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 // Remove this line if you have index: true in the schema above
 // shopSchema.index({ email: 1 });
 
-export default mongoose.models.Shop || mongoose.model<IShop>('Shop', shopSchema);
+export default mongoose.models.Shop ||
+  mongoose.model<IShop>('Shop', shopSchema);

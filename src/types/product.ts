@@ -33,7 +33,13 @@ export interface Order {
     address: string;
   };
   items: OrderItem[];
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'processing'
+    | 'shipped'
+    | 'delivered'
+    | 'cancelled';
   totalAmount: number;
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentMethod: 'card' | 'cash' | 'online';

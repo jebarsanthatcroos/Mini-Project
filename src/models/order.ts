@@ -1,4 +1,4 @@
-import { Schema, model, models, Document, Types } from "mongoose";
+import { Schema, model, models, Document, Types } from 'mongoose';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -14,7 +14,14 @@ export interface IOrder {
   pharmacy: Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'preparing'
+    | 'ready'
+    | 'out_for_delivery'
+    | 'delivered'
+    | 'cancelled';
   paymentMethod: 'cash' | 'card' | 'insurance';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   deliveryAddress: string;
@@ -35,27 +42,27 @@ export interface IOrderDocument extends IOrder, Document {
 const OrderItemSchema = new Schema<IOrderItem>({
   product: {
     type: Schema.Types.ObjectId,
-    ref: "Product",
-    required: true
+    ref: 'Product',
+    required: true,
   },
   quantity: {
     type: Number,
     required: true,
-    min: 1
+    min: 1,
   },
   price: {
     type: Number,
     required: true,
-    min: 0
+    min: 0,
   },
   prescriptionVerified: {
     type: Boolean,
-    default: false
+    default: false,
   },
   verifiedBy: {
     type: Schema.Types.ObjectId,
-    ref: "User"
-  }
+    ref: 'User',
+  },
 });
 
 const OrderSchema = new Schema<IOrderDocument>(
@@ -65,82 +72,90 @@ const OrderSchema = new Schema<IOrderDocument>(
       required: true,
       unique: true,
       uppercase: true,
-      trim: true
+      trim: true,
     },
     customer: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true
+      ref: 'User',
+      required: true,
     },
     pharmacy: {
       type: Schema.Types.ObjectId,
-      ref: "Pharmacy",
-      required: true
+      ref: 'Pharmacy',
+      required: true,
     },
     items: [OrderItemSchema],
     totalAmount: {
       type: Number,
       required: true,
-      min: 0
+      min: 0,
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered", "cancelled"],
-      default: "pending"
+      enum: [
+        'pending',
+        'confirmed',
+        'preparing',
+        'ready',
+        'out_for_delivery',
+        'delivered',
+        'cancelled',
+      ],
+      default: 'pending',
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "card", "insurance"],
-      required: true
+      enum: ['cash', 'card', 'insurance'],
+      required: true,
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed", "refunded"],
-      default: "pending"
+      enum: ['pending', 'paid', 'failed', 'refunded'],
+      default: 'pending',
     },
     deliveryAddress: {
       type: String,
       required: true,
       trim: true,
-      maxlength: [500, "Delivery address cannot exceed 500 characters"]
+      maxlength: [500, 'Delivery address cannot exceed 500 characters'],
     },
     driver: {
       type: Schema.Types.ObjectId,
-      ref: "User"
+      ref: 'User',
     },
     estimatedDelivery: {
-      type: Date
+      type: Date,
     },
     actualDelivery: {
-      type: Date
+      type: Date,
     },
     notes: {
       type: String,
       trim: true,
-      maxlength: [1000, "Notes cannot exceed 1000 characters"]
+      maxlength: [1000, 'Notes cannot exceed 1000 characters'],
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true
+      ref: 'User',
+      required: true,
     },
     updatedBy: {
       type: Schema.Types.ObjectId,
-      ref: "User"
-    }
+      ref: 'User',
+    },
   },
-  { 
+  {
     timestamps: true,
-    toJSON: { 
-      transform: function(doc, ret) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    toJSON: {
+      transform: function (doc, ret) {
+         
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),
-          ...rest
+          ...rest,
         };
-      }
-    }
+      },
+    },
   }
 );
 
@@ -151,10 +166,10 @@ OrderSchema.index({ pharmacy: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ paymentStatus: 1 });
 OrderSchema.index({ createdAt: -1 });
-OrderSchema.index({ "items.product": 1 });
+OrderSchema.index({ 'items.product': 1 });
 
 // Virtual for formatted order status
-OrderSchema.virtual('formattedStatus').get(function(this: IOrderDocument) {
+OrderSchema.virtual('formattedStatus').get(function (this: IOrderDocument) {
   const statusMap = {
     pending: 'Pending',
     confirmed: 'Confirmed',
@@ -162,24 +177,24 @@ OrderSchema.virtual('formattedStatus').get(function(this: IOrderDocument) {
     ready: 'Ready for Pickup',
     out_for_delivery: 'Out for Delivery',
     delivered: 'Delivered',
-    cancelled: 'Cancelled'
+    cancelled: 'Cancelled',
   };
   return statusMap[this.status] || this.status;
 });
 
 // Static method to find orders by status
-OrderSchema.statics.findByStatus = function(status: string) {
+OrderSchema.statics.findByStatus = function (status: string) {
   return this.find({ status }).populate('customer pharmacy items.product');
 };
 
 // Middleware to update timestamps
-OrderSchema.pre('save', function(next) {
+OrderSchema.pre('save', function (next) {
   if (this.status === 'delivered' && !this.actualDelivery) {
     this.actualDelivery = new Date();
   }
   next();
 });
 
-const Order = models.Order || model<IOrderDocument>("Order", OrderSchema);
+const Order = models.Order || model<IOrderDocument>('Order', OrderSchema);
 
 export default Order;

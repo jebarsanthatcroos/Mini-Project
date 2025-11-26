@@ -18,12 +18,12 @@ interface ApiResponse<T> {
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Unauthorized access',
-        error: 'You must be logged in to create a product'
+        error: 'You must be logged in to create a product',
       };
       return NextResponse.json(errorResponse, { status: 401 });
     }
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'User not found',
-        error: 'Unable to verify user account'
+        error: 'Unable to verify user account',
       };
       return NextResponse.json(errorResponse, { status: 404 });
     }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Insufficient permissions',
-        error: 'Only admins and pharmacists can create products'
+        error: 'Only admins and pharmacists can create products',
       };
       return NextResponse.json(errorResponse, { status: 403 });
     }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       sideEffects,
       dosage,
       activeIngredients,
-      barcode
+      barcode,
     } = body;
 
     // Validate required fields
@@ -78,7 +78,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Missing required fields',
-        error: 'Name, description, price, category, image, and pharmacy are required'
+        error:
+          'Name, description, price, category, image, and pharmacy are required',
       };
       return NextResponse.json(errorResponse, { status: 400 });
     }
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Invalid price',
-        error: 'Price must be greater than 0'
+        error: 'Price must be greater than 0',
       };
       return NextResponse.json(errorResponse, { status: 400 });
     }
@@ -98,66 +99,66 @@ export async function POST(request: NextRequest): Promise<Response> {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Invalid stock quantity',
-        error: 'Stock quantity cannot be negative'
+        error: 'Stock quantity cannot be negative',
       };
       return NextResponse.json(errorResponse, { status: 400 });
     }
     // Check if product with same name and pharmacy already exists
-        // Resolve pharmacy input to a valid ObjectId: accept 24-char id or lookup by slug/name
-        let pharmacyId: any = pharmacy;
-        if (!/^[0-9a-fA-F]{24}$/.test(String(pharmacy))) {
-          const foundPharmacy = await Pharmacy.findOne({
-            $or: [{ slug: pharmacy }, { name: pharmacy }]
-          });
-          if (!foundPharmacy) {
-            const errorResponse: ApiResponse<null> = {
-              success: false,
-              message: 'Invalid pharmacy',
-              error: 'Provided pharmacy does not exist'
-            };
-            return NextResponse.json(errorResponse, { status: 400 });
-          }
-          pharmacyId = foundPharmacy._id;
-        }
-    
-        const existingProduct = await Product.findOne({
-          name: name.trim(),
-          pharmacy: pharmacyId
-        });
-    
-        if (existingProduct) {
-          const errorResponse: ApiResponse<null> = {
-            success: false,
-            message: 'Product already exists',
-            error: 'A product with this name already exists in this pharmacy'
-          };
-          return NextResponse.json(errorResponse, { status: 409 });
-        }
-    
+    // Resolve pharmacy input to a valid ObjectId: accept 24-char id or lookup by slug/name
+    let pharmacyId: any = pharmacy;
+    if (!/^[0-9a-fA-F]{24}$/.test(String(pharmacy))) {
+      const foundPharmacy = await Pharmacy.findOne({
+        $or: [{ slug: pharmacy }, { name: pharmacy }],
+      });
+      if (!foundPharmacy) {
+        const errorResponse: ApiResponse<null> = {
+          success: false,
+          message: 'Invalid pharmacy',
+          error: 'Provided pharmacy does not exist',
+        };
+        return NextResponse.json(errorResponse, { status: 400 });
+      }
+      pharmacyId = foundPharmacy._id;
+    }
+
+    const existingProduct = await Product.findOne({
+      name: name.trim(),
+      pharmacy: pharmacyId,
+    });
+
+    if (existingProduct) {
+      const errorResponse: ApiResponse<null> = {
+        success: false,
+        message: 'Product already exists',
+        error: 'A product with this name already exists in this pharmacy',
+      };
+      return NextResponse.json(errorResponse, { status: 409 });
+    }
+
     // Create new product
-            const newProduct = new Product({
-              name: name.trim(),
-              description: description.trim(),
-              price: parseFloat(price),
-              costPrice: costPrice ? parseFloat(costPrice) : 0,
-              category: category.trim(),
-              image: image.trim(),
-              inStock: inStock !== undefined ? inStock : true,
-              stockQuantity: parseInt(stockQuantity) || 0,
-              minStockLevel: parseInt(minStockLevel) || 10,
-              pharmacy: pharmacyId,
-              sku: sku?.trim() || `SKU-${Date.now()}`,
-              manufacturer: manufacturer?.trim(),
-              requiresPrescription: requiresPrescription || false,
-              isControlledSubstance: isControlledSubstance || false,
-              sideEffects: sideEffects?.trim(),
-              dosage: dosage?.trim(),
-              activeIngredients: activeIngredients?.trim(),
-              barcode: barcode?.trim() || `BC${Date.now()}`,
-              createdBy: user._id
-            });
-    
-        await newProduct.save();
+    const newProduct = new Product({
+      name: name.trim(),
+      description: description.trim(),
+      price: parseFloat(price),
+      costPrice: costPrice ? parseFloat(costPrice) : 0,
+      category: category.trim(),
+      image: image.trim(),
+      inStock: inStock !== undefined ? inStock : true,
+      stockQuantity: parseInt(stockQuantity) || 0,
+      minStockLevel: parseInt(minStockLevel) || 10,
+      pharmacy: pharmacyId,
+      sku: sku?.trim() || `SKU-${Date.now()}`,
+      manufacturer: manufacturer?.trim(),
+      requiresPrescription: requiresPrescription || false,
+      isControlledSubstance: isControlledSubstance || false,
+      sideEffects: sideEffects?.trim(),
+      dosage: dosage?.trim(),
+      activeIngredients: activeIngredients?.trim(),
+      barcode: barcode?.trim() || `BC${Date.now()}`,
+      createdBy: user._id,
+    });
+
+    await newProduct.save();
 
     // Populate the createdBy field for response
     await newProduct.populate('createdBy', 'name email role');
@@ -166,20 +167,19 @@ export async function POST(request: NextRequest): Promise<Response> {
     const response: ApiResponse<typeof newProduct> = {
       success: true,
       data: newProduct,
-      message: 'Product created successfully'
+      message: 'Product created successfully',
     };
 
     return NextResponse.json(response, { status: 201 });
-
   } catch (error: any) {
     console.error('Error creating product:', error);
-    
+
     // Handle duplicate key errors specifically
     if (error.code === 11000) {
       const errorResponse: ApiResponse<null> = {
         success: false,
         message: 'Product SKU already exists',
-        error: 'A product with this SKU already exists'
+        error: 'A product with this SKU already exists',
       };
       return NextResponse.json(errorResponse, { status: 409 });
     }
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const errorResponse: ApiResponse<null> = {
       success: false,
       message: 'Failed to create product',
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
 
     return NextResponse.json(errorResponse, { status: 500 });
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 export async function GET(request: NextRequest): Promise<Response> {
   try {
     await connectDB();
-    
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -211,13 +211,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 
     // Build query
     const query: any = {};
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { manufacturer: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } }
+        { sku: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -260,20 +260,19 @@ export async function GET(request: NextRequest): Promise<Response> {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       },
-      message: 'Products fetched successfully'
+      message: 'Products fetched successfully',
     };
 
     return NextResponse.json(response, { status: 200 });
-
   } catch (error) {
     console.error('Error fetching products:', error);
     const errorResponse: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch products',
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
 
     return NextResponse.json(errorResponse, { status: 500 });

@@ -1,10 +1,8 @@
 import { authOptions } from '@/app/api/auth/[...nextauth]/option';
 import Order from '@/models/order';
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-
-
 
 export async function GET(
   request: NextRequest,
@@ -13,7 +11,7 @@ export async function GET(
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -25,10 +23,7 @@ export async function GET(
       .populate('createdBy', 'name email');
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     return NextResponse.json(order);
@@ -48,7 +43,7 @@ export async function PUT(
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -64,7 +59,7 @@ export async function PUT(
         ...(driver && { driver }),
         ...(estimatedDelivery && { estimatedDelivery }),
         ...(notes && { notes }),
-        updatedBy: session.user.id
+        updatedBy: session.user.id,
       },
       { new: true, runValidators: true }
     )
@@ -73,10 +68,7 @@ export async function PUT(
       .populate('items.product', 'name price image requiresPrescription');
 
     if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     return NextResponse.json(order);

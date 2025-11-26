@@ -54,48 +54,55 @@ export function UpcomingAppointments() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Upcoming Appointments</h2>
-        <p className="text-sm text-gray-600 mt-1">Today&apos;s schedule</p>
+    <div className='bg-white rounded-lg shadow-sm'>
+      <div className='p-6 border-b border-gray-200'>
+        <h2 className='text-lg font-semibold text-gray-900'>
+          Upcoming Appointments
+        </h2>
+        <p className='text-sm text-gray-600 mt-1'>Today&apos;s schedule</p>
       </div>
-      
-      <div className="divide-y divide-gray-200">
-        {appointments.map((appointment) => (
-          <div key={appointment.id} className="p-6 hover:bg-gray-50 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FiUser className="h-6 w-6 text-blue-600" />
+
+      <div className='divide-y divide-gray-200'>
+        {appointments.map(appointment => (
+          <div
+            key={appointment.id}
+            className='p-6 hover:bg-gray-50 transition-colors'
+          >
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center space-x-4'>
+                <div className='shrink-0'>
+                  <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
+                    <FiUser className='h-6 w-6 text-blue-600' />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">
+                  <h3 className='text-sm font-medium text-gray-900'>
                     {appointment.patientName}
                   </h3>
-                  <div className="flex items-center mt-1 space-x-4 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <FiClock className="h-4 w-4 mr-1" />
+                  <div className='flex items-center mt-1 space-x-4 text-sm text-gray-600'>
+                    <div className='flex items-center'>
+                      <FiClock className='h-4 w-4 mr-1' />
                       {appointment.time}
                     </div>
-                    <div className="flex items-center">
-                      <FiMapPin className="h-4 w-4 mr-1" />
+                    <div className='flex items-center'>
+                      <FiMapPin className='h-4 w-4 mr-1' />
                       {appointment.location}
                     </div>
-                    <div className="flex items-center">
-                      <FiPhone className="h-4 w-4 mr-1" />
+                    <div className='flex items-center'>
+                      <FiPhone className='h-4 w-4 mr-1' />
                       {appointment.phone}
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-3">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
+
+              <div className='flex items-center space-x-3'>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}
+                >
                   {appointment.status}
                 </span>
-                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                <span className='text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded'>
                   {appointment.type}
                 </span>
               </div>
@@ -103,9 +110,9 @@ export function UpcomingAppointments() {
           </div>
         ))}
       </div>
-      
-      <div className="p-4 border-t border-gray-200">
-        <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2">
+
+      <div className='p-4 border-t border-gray-200'>
+        <button className='w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2'>
           View All Appointments
         </button>
       </div>

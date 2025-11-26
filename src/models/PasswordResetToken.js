@@ -31,5 +31,5 @@ const passwordResetTokenSchema = new mongoose.Schema({
 passwordResetTokenSchema.index({ email: 1, used: 1 });
 passwordResetTokenSchema.index({ token: 1 });
 
-export default mongoose.models.PasswordResetToken || 
-       mongoose.model('PasswordResetToken', passwordResetTokenSchema);
+export default mongoose.models.PasswordResetToken ||
+  mongoose.model('PasswordResetToken', passwordResetTokenSchema);

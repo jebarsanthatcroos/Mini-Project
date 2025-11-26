@@ -1,30 +1,43 @@
 // models/Patient.ts
-import { Schema, model, models, Document, Types, Model } from "mongoose";
+import { Schema, model, models, Document, Types, Model } from 'mongoose';
+
+export interface IAddress {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+export interface IEmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+  email?: string;
+}
+
+export interface IInsurance {
+  provider: string;
+  policyNumber: string;
+  groupNumber?: string;
+}
 
 export interface IPatient {
-  userId: Types.ObjectId;
-  medicalRecordNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
   dateOfBirth: Date;
-  gender: "MALE" | "FEMALE" | "OTHER";
-  bloodType?: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
-  height?: number; // in cm
-  weight?: number; // in kg
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  address?: IAddress;
+  emergencyContact?: IEmergencyContact;
+  medicalHistory?: string;
   allergies?: string[];
-  chronicConditions?: string[];
-  emergencyContact?: {
-    name: string;
-    relationship: string;
-    phone: string;
-    email?: string;
-  };
-  insurance?: {
-    provider: string;
-    policyNumber: string;
-    groupNumber?: string;
-    expiryDate?: Date;
-  };
-  primaryPhysician?: Types.ObjectId; // Reference to Doctor (User)
-  notes?: string;
+  medications?: string[];
+  insurance?: IInsurance;
+  bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+  height?: number;
+  weight?: number;
   isActive?: boolean;
 }
 
@@ -32,283 +45,349 @@ export interface IPatientDocument extends IPatient, Document {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-  
-  // Virtuals
   age: number;
   bmi?: number;
-  fullMedicalRecord: string;
-  
-  // Methods
+  fullName: string;
   calculateAge(): number;
   calculateBMI(): number | null;
   hasAllergy(allergen: string): boolean;
   addAllergy(allergen: string): void;
   removeAllergy(allergen: string): void;
+  hasMedication(medication: string): boolean;
+  addMedication(medication: string): void;
+  removeMedication(medication: string): void;
 }
 
-const PatientSchema = new Schema<IPatientDocument>(
+interface IPatientModel extends Model<IPatientDocument> {
+  findActivePatients(): Promise<IPatientDocument[]>;
+  findByEmail(email: string): Promise<IPatientDocument | null>;
+  searchPatients(searchTerm: string): Promise<IPatientDocument[]>;
+}
+
+const AddressSchema = new Schema<IAddress>({
+  street: { type: String, trim: true, default: '' },
+  city: { type: String, trim: true, default: '' },
+  state: { type: String, trim: true, default: '' },
+  zipCode: { type: String, trim: true, default: '' },
+  country: { type: String, trim: true, default: '' },
+});
+
+const EmergencyContactSchema = new Schema<IEmergencyContact>({
+  name: { type: String, trim: true, default: '' },
+  phone: { type: String, trim: true, default: '' },
+  relationship: { type: String, trim: true, default: '' },
+  email: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    match: [
+      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+      'Please enter a valid email',
+    ],
+  },
+});
+
+const InsuranceSchema = new Schema<IInsurance>({
+  provider: { type: String, trim: true, default: '' },
+  policyNumber: { type: String, trim: true, default: '' },
+  groupNumber: { type: String, trim: true, default: '' },
+});
+
+const PatientSchema = new Schema<IPatientDocument, IPatientModel>(
   {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User ID is required"],
-      unique: true
-    },
-    medicalRecordNumber: {
+    firstName: {
       type: String,
-      required: [true, "Medical record number is required"],
+      required: [true, 'First name is required'],
+      trim: true,
+      maxlength: [50, 'First name cannot exceed 50 characters'],
+    },
+    lastName: {
+      type: String,
+      required: [true, 'Last name is required'],
+      trim: true,
+      maxlength: [50, 'Last name cannot exceed 50 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
       unique: true,
-      uppercase: true,
-      match: [/^MRN-\d{8}$/, "Medical record number must be in format MRN-XXXXXXXX"]
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        'Please enter a valid email',
+      ],
+    },
+    phone: {
+      type: String,
+      required: [true, 'Phone number is required'],
+      trim: true,
+      match: [/^\+?[\d\s-()]+$/, 'Please enter a valid phone number'],
     },
     dateOfBirth: {
       type: Date,
-      required: [true, "Date of birth is required"],
+      required: [true, 'Date of birth is required'],
       validate: {
-        validator: function(value: Date) {
+        validator: function (value: Date) {
           return value < new Date();
         },
-        message: "Date of birth must be in the past"
-      }
+        message: 'Date of birth must be in the past',
+      },
     },
     gender: {
       type: String,
-      enum: ["MALE", "FEMALE", "OTHER"],
-      required: [true, "Gender is required"]
+      required: [true, 'Gender is required'],
+      enum: ['MALE', 'FEMALE', 'OTHER'],
     },
-    bloodType: {
+    address: {
+      type: AddressSchema,
+      default: () => ({}),
+    },
+    emergencyContact: {
+      type: EmergencyContactSchema,
+      default: () => ({}),
+    },
+    medicalHistory: {
       type: String,
-      enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-    },
-    height: {
-      type: Number,
-      min: [0, "Height must be positive"],
-      max: [300, "Height must be realistic (max 300cm)"]
-    },
-    weight: {
-      type: Number,
-      min: [0, "Weight must be positive"],
-      max: [500, "Weight must be realistic (max 500kg)"]
+      trim: true,
+      maxlength: [2000, 'Medical history cannot exceed 2000 characters'],
+      default: '',
     },
     allergies: {
       type: [String],
-      default: []
+      default: [],
+      set: function (allergies: string[]) {
+        return [...new Set(allergies.map(a => a.toLowerCase().trim()))];
+      },
     },
-    chronicConditions: {
+    medications: {
       type: [String],
-      default: []
-    },
-    emergencyContact: {
-      name: {
-        type: String,
-        required: [true, "Emergency contact name is required"],
-        trim: true
+      default: [],
+      set: function (medications: string[]) {
+        return [...new Set(medications.map(m => m.trim()))];
       },
-      relationship: {
-        type: String,
-        required: [true, "Emergency contact relationship is required"],
-        trim: true
-      },
-      phone: {
-        type: String,
-        required: [true, "Emergency contact phone is required"],
-        match: [/^\+?[\d\s-()]+$/, "Please enter a valid phone number"]
-      },
-      email: {
-        type: String,
-        lowercase: true,
-        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, "Please enter a valid email"]
-      }
     },
     insurance: {
-      provider: {
-        type: String,
-        trim: true
-      },
-      policyNumber: {
-        type: String,
-        trim: true,
-        uppercase: true
-      },
-      groupNumber: {
-        type: String,
-        trim: true
-      },
-      expiryDate: {
-        type: Date,
-        validate: {
-          validator: function(value: Date) {
-            return !value || value > new Date();
-          },
-          message: "Insurance expiry date must be in the future"
-        }
-      }
+      type: InsuranceSchema,
+      default: () => ({}),
     },
-    primaryPhysician: {
-      type: Schema.Types.ObjectId,
-      ref: "User"
-    },
-    notes: {
+    bloodType: {
       type: String,
-      trim: true,
-      maxlength: [1000, "Notes cannot exceed 1000 characters"]
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    },
+    height: {
+      type: Number,
+      min: [0, 'Height must be positive'],
+      max: [300, 'Height must be realistic (max 300cm)'],
+    },
+    weight: {
+      type: Number,
+      min: [0, 'Weight must be positive'],
+      max: [500, 'Weight must be realistic (max 500kg)'],
     },
     isActive: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   {
     timestamps: true,
-    toJSON: { 
+    toJSON: {
       virtuals: true,
-      transform: function(doc, ret) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      transform: function (doc, ret) {
         const { _id, __v, ...rest } = ret;
         return {
-          id: _id.toString(),
-          ...rest
+          _id: _id.toString(),
+          ...rest,
         };
-      }
+      },
     },
-    toObject: { virtuals: true }
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        const { _id, __v, ...rest } = ret;
+        return {
+          _id: _id.toString(),
+          ...rest,
+        };
+      },
+    },
   }
 );
 
-// Virtual for age calculation
-PatientSchema.virtual('age').get(function(this: IPatientDocument) {
+// Virtuals
+PatientSchema.virtual('age').get(function (this: IPatientDocument) {
   return this.calculateAge();
 });
 
-// Virtual for BMI calculation
-PatientSchema.virtual('bmi').get(function(this: IPatientDocument) {
+PatientSchema.virtual('bmi').get(function (this: IPatientDocument) {
   return this.calculateBMI();
 });
 
-// Virtual for full medical record string
-PatientSchema.virtual('fullMedicalRecord').get(function(this: IPatientDocument) {
-  return `${this.medicalRecordNumber} - DOB: ${this.dateOfBirth.toISOString().split('T')[0]}`;
+PatientSchema.virtual('fullName').get(function (this: IPatientDocument) {
+  return `${this.firstName} ${this.lastName}`;
 });
 
-// Method to calculate age
-PatientSchema.methods.calculateAge = function(this: IPatientDocument): number {
+// Methods
+PatientSchema.methods.calculateAge = function (this: IPatientDocument): number {
   const today = new Date();
   const birthDate = new Date(this.dateOfBirth);
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
     age--;
   }
-  
   return age;
 };
 
-// Method to calculate BMI
-PatientSchema.methods.calculateBMI = function(this: IPatientDocument): number | null {
-  if (!this.height || !this.weight) {
-    return null;
-  }
-  
+PatientSchema.methods.calculateBMI = function (
+  this: IPatientDocument
+): number | null {
+  if (!this.height || !this.weight || this.height === 0) return null;
   const heightInMeters = this.height / 100;
   const bmi = this.weight / (heightInMeters * heightInMeters);
-  
-  return Math.round(bmi * 10) / 10; // Round to 1 decimal place
+  return Math.round(bmi * 10) / 10;
 };
 
-// Method to check if patient has specific allergy
-PatientSchema.methods.hasAllergy = function(this: IPatientDocument, allergen: string): boolean {
-  return this.allergies ? this.allergies.includes(allergen.toLowerCase()) : false;
+PatientSchema.methods.hasAllergy = function (
+  this: IPatientDocument,
+  allergen: string
+): boolean {
+  return this.allergies
+    ? this.allergies.includes(allergen.toLowerCase().trim())
+    : false;
 };
 
-// Method to add allergy
-PatientSchema.methods.addAllergy = function(this: IPatientDocument, allergen: string): void {
-  if (!this.allergies) {
-    this.allergies = [];
-  }
-  
-  const normalizedAllergen = allergen.toLowerCase();
+PatientSchema.methods.addAllergy = function (
+  this: IPatientDocument,
+  allergen: string
+): void {
+  if (!this.allergies) this.allergies = [];
+  const normalizedAllergen = allergen.toLowerCase().trim();
   if (!this.allergies.includes(normalizedAllergen)) {
     this.allergies.push(normalizedAllergen);
   }
 };
 
-// Method to remove allergy
-PatientSchema.methods.removeAllergy = function(this: IPatientDocument, allergen: string): void {
+PatientSchema.methods.removeAllergy = function (
+  this: IPatientDocument,
+  allergen: string
+): void {
   if (this.allergies) {
-    this.allergies = this.allergies.filter(a => a !== allergen.toLowerCase());
+    const normalizedAllergen = allergen.toLowerCase().trim();
+    this.allergies = this.allergies.filter(a => a !== normalizedAllergen);
   }
 };
 
-// Indexes for better query performance
-PatientSchema.index({ userId: 1 });
-PatientSchema.index({ medicalRecordNumber: 1 });
+PatientSchema.methods.hasMedication = function (
+  this: IPatientDocument,
+  medication: string
+): boolean {
+  return this.medications
+    ? this.medications.includes(medication.trim())
+    : false;
+};
+
+PatientSchema.methods.addMedication = function (
+  this: IPatientDocument,
+  medication: string
+): void {
+  if (!this.medications) this.medications = [];
+  const normalizedMedication = medication.trim();
+  if (!this.medications.includes(normalizedMedication)) {
+    this.medications.push(normalizedMedication);
+  }
+};
+
+PatientSchema.methods.removeMedication = function (
+  this: IPatientDocument,
+  medication: string
+): void {
+  if (this.medications) {
+    const normalizedMedication = medication.trim();
+    this.medications = this.medications.filter(m => m !== normalizedMedication);
+  }
+};
+
+// Static methods
+PatientSchema.statics.findActivePatients = function () {
+  return this.find({ isActive: true }).sort({ firstName: 1, lastName: 1 });
+};
+
+PatientSchema.statics.findByEmail = function (email: string) {
+  return this.findOne({ email: email.toLowerCase(), isActive: true });
+};
+
+PatientSchema.statics.searchPatients = function (searchTerm: string) {
+  return this.find({
+    isActive: true,
+    $or: [
+      { firstName: { $regex: searchTerm, $options: 'i' } },
+      { lastName: { $regex: searchTerm, $options: 'i' } },
+      { email: { $regex: searchTerm, $options: 'i' } },
+      { phone: { $regex: searchTerm, $options: 'i' } },
+    ],
+  }).sort({ firstName: 1, lastName: 1 });
+};
+
+// Indexes
+PatientSchema.index({ email: 1 }, { unique: true });
 PatientSchema.index({ isActive: 1 });
-PatientSchema.index({ primaryPhysician: 1 });
+PatientSchema.index({ firstName: 1, lastName: 1 });
 PatientSchema.index({ createdAt: -1 });
 PatientSchema.index({ dateOfBirth: 1 });
+PatientSchema.index({
+  firstName: 'text',
+  lastName: 'text',
+  email: 'text',
+  phone: 'text',
+  'address.city': 'text',
+  'address.state': 'text',
+});
 
-// Static method to find active patients
-PatientSchema.statics.findActivePatients = function() {
-  return this.find({ isActive: true }).populate('userId primaryPhysician');
-};
-
-// Static method to find by primary physician
-PatientSchema.statics.findByPhysician = function(physicianId: Types.ObjectId) {
-  return this.find({ primaryPhysician: physicianId, isActive: true }).populate('userId');
-};
-
-// Static method to generate medical record number
-PatientSchema.statics.generateMRN = async function() {
-  const count = await this.countDocuments();
-  const nextNumber = (count + 1).toString().padStart(8, '0');
-  return `MRN-${nextNumber}`;
-};
-
-// Middleware to validate user exists and has PATIENT role
-PatientSchema.pre('save', async function(next) {
-  if (this.isNew || this.isModified('userId')) {
-    const User = models.User || model('User');
-    const user = await User.findById(this.userId);
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
-    
-    if (user.role !== 'PATIENT') {
-      throw new Error('User must have PATIENT role');
-    }
+// Middleware
+PatientSchema.pre('save', function (next) {
+  // Ensure nested objects exist
+  if (!this.address) {
+    this.address = {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: '',
+    };
   }
-  
+
+  if (!this.emergencyContact) {
+    this.emergencyContact = {
+      name: '',
+      phone: '',
+      relationship: '',
+    };
+  }
+
+  if (!this.insurance) {
+    this.insurance = {
+      provider: '',
+      policyNumber: '',
+      groupNumber: '',
+    };
+  }
+
   next();
 });
 
-// Middleware to validate primary physician
-PatientSchema.pre('save', async function(next) {
-  if (this.primaryPhysician) {
-    const User = models.User || model('User');
-    const physician = await User.findById(this.primaryPhysician);
-    
-    if (!physician) {
-      throw new Error('Primary physician not found');
-    }
-    
-    if (physician.role !== 'DOCTOR') {
-      throw new Error('Primary physician must have DOCTOR role');
-    }
-  }
-  
+PatientSchema.pre('findOneAndUpdate', function (next) {
+  this.set({ updatedAt: new Date() });
   next();
 });
 
-// Add static methods to the schema interface
-interface PatientModel extends Schema<IPatientDocument> {
-  findActivePatients(): Promise<IPatientDocument[]>;
-  findByPhysician(physicianId: Types.ObjectId): Promise<IPatientDocument[]>;
-  generateMRN(): Promise<string>;
-}
-
-const Patient = (models.Patient as unknown as Model<IPatientDocument> & PatientModel) || 
-  model<IPatientDocument, PatientModel>("Patient", PatientSchema);
+const Patient =
+  (models.Patient as IPatientModel) ||
+  model<IPatientDocument, IPatientModel>('Patient', PatientSchema);
 
 export default Patient;

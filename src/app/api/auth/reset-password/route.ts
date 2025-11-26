@@ -1,9 +1,9 @@
 // app/api/auth/reset-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { connectDB } from "@/lib/mongodb";
-import User from "@/models/User";
-import PasswordResetToken from "@/models/PasswordResetToken";
+import { connectDB } from '@/lib/mongodb';
+import User from '@/models/User';
+import PasswordResetToken from '@/models/PasswordResetToken';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const resetToken = await PasswordResetToken.findOne({
       token,
       used: false,
-      expiresAt: { $gt: new Date() } // Not expired
+      expiresAt: { $gt: new Date() }, // Not expired
     });
 
     if (!resetToken) {
@@ -43,10 +43,7 @@ export async function POST(request: NextRequest) {
     // Find user
     const user = await User.findOne({ email: resetToken.email });
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Hash new password
@@ -55,29 +52,25 @@ export async function POST(request: NextRequest) {
     // Update user password
     await User.updateOne(
       { email: resetToken.email },
-      { 
+      {
         password: hashedPassword,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
     );
 
     // Mark token as used
-    await PasswordResetToken.updateOne(
-      { token },
-      { used: true }
-    );
+    await PasswordResetToken.updateOne({ token }, { used: true });
 
     // Delete all used tokens for this email
     await PasswordResetToken.deleteMany({
       email: resetToken.email,
-      used: true
+      used: true,
     });
 
     return NextResponse.json(
       { message: 'Password reset successfully' },
       { status: 200 }
     );
-
   } catch (error) {
     console.error('Reset password error:', error);
     return NextResponse.json(
@@ -94,10 +87,7 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('token');
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Token is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
     await connectDB();
@@ -105,7 +95,7 @@ export async function GET(request: NextRequest) {
     const resetToken = await PasswordResetToken.findOne({
       token,
       used: false,
-      expiresAt: { $gt: new Date() }
+      expiresAt: { $gt: new Date() },
     });
 
     if (!resetToken) {
@@ -119,7 +109,6 @@ export async function GET(request: NextRequest) {
       { valid: true, email: resetToken.email },
       { status: 200 }
     );
-
   } catch (error) {
     console.error('Token validation error:', error);
     return NextResponse.json(

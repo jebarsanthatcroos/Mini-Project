@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import type { Metadata } from 'next';
 import { DoctorSidebar } from '@/components/Doctor/DoctorSidebar';
 import { DoctorHeader } from '@/components/Doctor/DoctorHeader';
@@ -13,13 +14,11 @@ export default function DoctorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className='flex h-screen bg-gray-50'>
       <DoctorSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className='flex-1 flex flex-col overflow-hidden'>
         <DoctorHeader />
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
+        <main className='flex-1 overflow-auto p-6'>{children}</main>
       </div>
     </div>
   );

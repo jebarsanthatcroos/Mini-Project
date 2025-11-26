@@ -4,16 +4,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  FiArrowLeft, 
-  FiSave, 
-  FiUser, 
-  FiCalendar, 
-  FiClock, 
-  FiMapPin, 
+import {
+  FiArrowLeft,
+  FiSave,
+  FiUser,
+  FiCalendar,
+  FiClock,
+  FiMapPin,
   FiFileText,
   FiX,
-  FiSearch
+  FiSearch,
 } from 'react-icons/fi';
 import Loading from '@/components/Loading';
 
@@ -56,13 +56,28 @@ const serviceTypes = [
   { value: 'VACCINATION', label: 'Vaccination' },
   { value: 'HEALTH_SCREENING', label: 'Health Screening' },
   { value: 'PRESCRIPTION_CONSULTATION', label: 'Prescription Consultation' },
-  { value: 'OTHER', label: 'Other' }
+  { value: 'OTHER', label: 'Other' },
 ];
 
 const timeSlots = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
+  '09:00',
+  '09:30',
+  '10:00',
+  '10:30',
+  '11:00',
+  '11:30',
+  '12:00',
+  '12:30',
+  '13:00',
+  '13:30',
+  '14:00',
+  '14:30',
+  '15:00',
+  '15:30',
+  '16:00',
+  '16:30',
+  '17:00',
+  '17:30',
 ];
 
 const durationOptions = [
@@ -70,7 +85,7 @@ const durationOptions = [
   { value: 30, label: '30 minutes' },
   { value: 45, label: '45 minutes' },
   { value: 60, label: '60 minutes' },
-  { value: 90, label: '90 minutes' }
+  { value: 90, label: '90 minutes' },
 ];
 
 export default function NewAppointmentPage() {
@@ -92,7 +107,7 @@ export default function NewAppointmentPage() {
     duration: 30,
     serviceType: 'MEDICATION_REVIEW',
     reason: '',
-    notes: ''
+    notes: '',
   });
 
   useEffect(() => {
@@ -107,7 +122,7 @@ export default function NewAppointmentPage() {
       // Fetch patients and pharmacies in parallel
       const [patientsResponse, pharmaciesResponse] = await Promise.all([
         fetch('/api/patient/?limit=100'),
-        fetch('/api/pharmacy')
+        fetch('/api/pharmacy'),
       ]);
 
       if (!patientsResponse.ok || !pharmaciesResponse.ok) {
@@ -123,26 +138,25 @@ export default function NewAppointmentPage() {
 
       if (pharmaciesData.success) {
         setPharmacies(pharmaciesData.data.pharmacies || []);
-        
+
         // Auto-select the first pharmacy if available
         if (pharmaciesData.data.pharmacies?.length > 0) {
           setFormData(prev => ({
             ...prev,
-            pharmacyId: pharmaciesData.data.pharmacies[0].id
+            pharmacyId: pharmaciesData.data.pharmacies[0].id,
           }));
         }
       }
-
     } catch (error) {
       console.error('Error fetching initial data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load data');
-      
+
       // Load mock data for development
       setPatients(getMockPatients());
       setPharmacies(getMockPharmacies());
       setFormData(prev => ({
         ...prev,
-        pharmacyId: 'pharmacy1'
+        pharmacyId: 'pharmacy1',
       }));
     } finally {
       setLoading(false);
@@ -159,13 +173,12 @@ export default function NewAppointmentPage() {
         email: 'jenarsathatcroos@gamil.com',
         phone: '0762397951',
         dateOfBirth: '2001-06-08',
-        gender: 'MALE'
+        gender: 'MALE',
       },
       medicalRecordNumber: 'MRN-00000001',
       allergies: ['Penicillin', 'Peanuts'],
-      chronicConditions: ['Hypertension', 'Type 2 Diabetes']
+      chronicConditions: ['Hypertension', 'Type 2 Diabetes'],
     },
-  
   ];
 
   const getMockPharmacies = (): Pharmacy[] => [
@@ -173,21 +186,25 @@ export default function NewAppointmentPage() {
       id: 'pharmacy1',
       name: 'Main Street Pharmacy',
       address: 'thalaimanar,mannar',
-      phone: '076239795'
+      phone: '076239795',
     },
     {
       id: 'pharmacy2',
       name: 'Health Plus Pharmacy',
       address: 'batticaloa road,kalkuthavelai',
-      phone: '+1234567891'
-    }
+      phone: '+1234567891',
+    },
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'duration' ? parseInt(value) : value
+      [name]: name === 'duration' ? parseInt(value) : value,
     }));
   };
 
@@ -195,7 +212,7 @@ export default function NewAppointmentPage() {
     setSelectedPatient(patient);
     setFormData(prev => ({
       ...prev,
-      patientId: patient.id
+      patientId: patient.id,
     }));
     setShowPatientSearch(false);
     setPatientSearch('');
@@ -205,13 +222,13 @@ export default function NewAppointmentPage() {
     setSelectedPatient(null);
     setFormData(prev => ({
       ...prev,
-      patientId: ''
+      patientId: '',
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.patientId) {
       setError('Please select a patient');
@@ -257,10 +274,11 @@ export default function NewAppointmentPage() {
       } else {
         throw new Error(data.error || 'Failed to create appointment');
       }
-
     } catch (error) {
       console.error('Error creating appointment:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create appointment');
+      setError(
+        error instanceof Error ? error.message : 'Failed to create appointment'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -271,37 +289,46 @@ export default function NewAppointmentPage() {
     return today.toISOString().split('T')[0];
   };
 
-  const filteredPatients = patients.filter(patient =>
-    patient.userId.firstName.toLowerCase().includes(patientSearch.toLowerCase()) ||
-    patient.userId.lastName.toLowerCase().includes(patientSearch.toLowerCase()) ||
-    patient.medicalRecordNumber.toLowerCase().includes(patientSearch.toLowerCase()) ||
-    patient.userId.email.toLowerCase().includes(patientSearch.toLowerCase())
+  const filteredPatients = patients.filter(
+    patient =>
+      patient.userId.firstName
+        .toLowerCase()
+        .includes(patientSearch.toLowerCase()) ||
+      patient.userId.lastName
+        .toLowerCase()
+        .includes(patientSearch.toLowerCase()) ||
+      patient.medicalRecordNumber
+        .toLowerCase()
+        .includes(patientSearch.toLowerCase()) ||
+      patient.userId.email.toLowerCase().includes(patientSearch.toLowerCase())
   );
 
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className='min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-4 sm:p-6'>
+      <div className='max-w-4xl mx-auto'>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className='mb-8'
         >
           <button
             onClick={() => router.push('/Pharmacist/appointments')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+            className='flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
           >
             <FiArrowLeft />
             Back to Appointments
           </button>
-          
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text">
+
+          <div className='text-center'>
+            <h1 className='text-3xl sm:text-4xl font-bold text-gray-900 bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text'>
               New Appointment
             </h1>
-            <p className="text-gray-600 mt-2">Schedule a new patient consultation</p>
+            <p className='text-gray-600 mt-2'>
+              Schedule a new patient consultation
+            </p>
           </div>
         </motion.div>
 
@@ -310,15 +337,15 @@ export default function NewAppointmentPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3"
+            className='mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3'
           >
-            <FiX className="text-red-500 text-xl shrink-0" />
-            <div className="flex-1">
-              <p className="text-red-800 text-sm">{error}</p>
+            <FiX className='text-red-500 text-xl shrink-0' />
+            <div className='flex-1'>
+              <p className='text-red-800 text-sm'>{error}</p>
             </div>
             <button
               onClick={() => setError(null)}
-              className="text-red-600 hover:text-red-800 text-sm font-medium shrink-0"
+              className='text-red-600 hover:text-red-800 text-sm font-medium shrink-0'
             >
               Dismiss
             </button>
@@ -330,59 +357,68 @@ export default function NewAppointmentPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 border border-white/20"
+          className='bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 border border-white/20'
         >
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className='space-y-6'>
             {/* Patient Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className='block text-sm font-medium text-gray-700 mb-3'>
                 Select Patient *
               </label>
-              
+
               {selectedPatient ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <FiUser className="text-blue-600" />
+                <div className='bg-blue-50 border border-blue-200 rounded-xl p-4'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3'>
+                      <div className='p-2 bg-blue-100 rounded-lg'>
+                        <FiUser className='text-blue-600' />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900">
-                          {selectedPatient.userId.firstName} {selectedPatient.userId.lastName}
+                        <h4 className='font-semibold text-gray-900'>
+                          {selectedPatient.userId.firstName}{' '}
+                          {selectedPatient.userId.lastName}
                         </h4>
-                        <p className="text-sm text-gray-600">
-                          {selectedPatient.medicalRecordNumber} • {selectedPatient.userId.email}
+                        <p className='text-sm text-gray-600'>
+                          {selectedPatient.medicalRecordNumber} •{' '}
+                          {selectedPatient.userId.email}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          DOB: {new Date(selectedPatient.userId.dateOfBirth).toLocaleDateString()} • 
-                          Phone: {selectedPatient.userId.phone}
+                        <p className='text-xs text-gray-500 mt-1'>
+                          DOB:{' '}
+                          {new Date(
+                            selectedPatient.userId.dateOfBirth
+                          ).toLocaleDateString()}{' '}
+                          • Phone: {selectedPatient.userId.phone}
                         </p>
                       </div>
                     </div>
                     <button
-                      type="button"
+                      type='button'
                       onClick={clearSelectedPatient}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      className='text-gray-400 hover:text-gray-600 transition-colors'
                     >
-                      <FiX className="text-lg" />
+                      <FiX className='text-lg' />
                     </button>
                   </div>
-                  
+
                   {/* Patient Medical Info */}
-                  <div className="mt-3 pt-3 border-t border-blue-200">
-                    <div className="flex flex-wrap gap-2">
+                  <div className='mt-3 pt-3 border-t border-blue-200'>
+                    <div className='flex flex-wrap gap-2'>
                       {selectedPatient.allergies.length > 0 && (
                         <div>
-                          <span className="text-xs font-medium text-red-600">Allergies:</span>
-                          <span className="text-xs text-gray-600 ml-1">
+                          <span className='text-xs font-medium text-red-600'>
+                            Allergies:
+                          </span>
+                          <span className='text-xs text-gray-600 ml-1'>
                             {selectedPatient.allergies.join(', ')}
                           </span>
                         </div>
                       )}
                       {selectedPatient.chronicConditions.length > 0 && (
                         <div>
-                          <span className="text-xs font-medium text-orange-600">Conditions:</span>
-                          <span className="text-xs text-gray-600 ml-1">
+                          <span className='text-xs font-medium text-orange-600'>
+                            Conditions:
+                          </span>
+                          <span className='text-xs text-gray-600 ml-1'>
                             {selectedPatient.chronicConditions.join(', ')}
                           </span>
                         </div>
@@ -391,63 +427,72 @@ export default function NewAppointmentPage() {
                   </div>
                 </div>
               ) : (
-                <div className="relative">
+                <div className='relative'>
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setShowPatientSearch(true)}
-                    className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 text-left"
+                    className='w-full flex items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 text-left'
                   >
-                    <FiUser className="text-gray-400 text-xl" />
+                    <FiUser className='text-gray-400 text-xl' />
                     <div>
-                      <p className="font-medium text-gray-700">Select a patient</p>
-                      <p className="text-sm text-gray-500">Click to search and select patient</p>
+                      <p className='font-medium text-gray-700'>
+                        Select a patient
+                      </p>
+                      <p className='text-sm text-gray-500'>
+                        Click to search and select patient
+                      </p>
                     </div>
                   </button>
 
                   {/* Patient Search Modal */}
                   {showPatientSearch && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-96 overflow-y-auto">
-                      <div className="p-3 border-b border-gray-200">
-                        <div className="relative">
-                          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <div className='absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-96 overflow-y-auto'>
+                      <div className='p-3 border-b border-gray-200'>
+                        <div className='relative'>
+                          <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                           <input
-                            type="text"
-                            placeholder="Search patients by name, MRN, or email..."
+                            type='text'
+                            placeholder='Search patients by name, MRN, or email...'
                             value={patientSearch}
-                            onChange={(e) => setPatientSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onChange={e => setPatientSearch(e.target.value)}
+                            className='w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                             autoFocus
                           />
                         </div>
                       </div>
-                      
-                      <div className="p-2">
+
+                      <div className='p-2'>
                         {filteredPatients.length === 0 ? (
-                          <div className="text-center py-4 text-gray-500">
+                          <div className='text-center py-4 text-gray-500'>
                             No patients found
                           </div>
                         ) : (
                           filteredPatients.map(patient => (
                             <button
                               key={patient.id}
-                              type="button"
+                              type='button'
                               onClick={() => handlePatientSelect(patient)}
-                              className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              className='w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0'
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-gray-100 rounded-lg">
-                                  <FiUser className="text-gray-600" />
+                              <div className='flex items-center gap-3'>
+                                <div className='p-2 bg-gray-100 rounded-lg'>
+                                  <FiUser className='text-gray-600' />
                                 </div>
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-900">
-                                    {patient.userId.firstName} {patient.userId.lastName}
+                                <div className='flex-1'>
+                                  <h4 className='font-semibold text-gray-900'>
+                                    {patient.userId.firstName}{' '}
+                                    {patient.userId.lastName}
                                   </h4>
-                                  <p className="text-sm text-gray-600">
-                                    {patient.medicalRecordNumber} • {patient.userId.email}
+                                  <p className='text-sm text-gray-600'>
+                                    {patient.medicalRecordNumber} •{' '}
+                                    {patient.userId.email}
                                   </p>
-                                  <p className="text-xs text-gray-500">
-                                    DOB: {new Date(patient.userId.dateOfBirth).toLocaleDateString()} • 
-                                    Phone: {patient.userId.phone}
+                                  <p className='text-xs text-gray-500'>
+                                    DOB:{' '}
+                                    {new Date(
+                                      patient.userId.dateOfBirth
+                                    ).toLocaleDateString()}{' '}
+                                    • Phone: {patient.userId.phone}
                                   </p>
                                 </div>
                               </div>
@@ -455,12 +500,12 @@ export default function NewAppointmentPage() {
                           ))
                         )}
                       </div>
-                      
-                      <div className="p-3 border-t border-gray-200">
+
+                      <div className='p-3 border-t border-gray-200'>
                         <button
-                          type="button"
+                          type='button'
                           onClick={() => setShowPatientSearch(false)}
-                          className="w-full text-center text-gray-600 hover:text-gray-800 py-2"
+                          className='w-full text-center text-gray-600 hover:text-gray-800 py-2'
                         >
                           Cancel
                         </button>
@@ -473,20 +518,23 @@ export default function NewAppointmentPage() {
 
             {/* Pharmacy Selection */}
             <div>
-              <label htmlFor="pharmacyId" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor='pharmacyId'
+                className='block text-sm font-medium text-gray-700 mb-2'
+              >
                 Pharmacy Location *
               </label>
-              <div className="relative">
-                <FiMapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <div className='relative'>
+                <FiMapPin className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                 <select
-                  id="pharmacyId"
-                  name="pharmacyId"
+                  id='pharmacyId'
+                  name='pharmacyId'
                   value={formData.pharmacyId}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300"
+                  className='w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300'
                 >
-                  <option value="">Select a pharmacy</option>
+                  <option value=''>Select a pharmacy</option>
                   {pharmacies.map(pharmacy => (
                     <option key={`pharmacy-${pharmacy.id}`} value={pharmacy.id}>
                       {pharmacy.name} - {pharmacy.address}
@@ -497,41 +545,47 @@ export default function NewAppointmentPage() {
             </div>
 
             {/* Date and Time */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor='appointmentDate'
+                  className='block text-sm font-medium text-gray-700 mb-2'
+                >
                   Appointment Date *
                 </label>
-                <div className="relative">
-                  <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <div className='relative'>
+                  <FiCalendar className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                   <input
-                    type="date"
-                    id="appointmentDate"
-                    name="appointmentDate"
+                    type='date'
+                    id='appointmentDate'
+                    name='appointmentDate'
                     value={formData.appointmentDate}
                     onChange={handleInputChange}
                     min={getMinDate()}
                     required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300"
+                    className='w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300'
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="appointmentTime" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor='appointmentTime'
+                  className='block text-sm font-medium text-gray-700 mb-2'
+                >
                   Appointment Time *
                 </label>
-                <div className="relative">
-                  <FiClock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <div className='relative'>
+                  <FiClock className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                   <select
-                    id="appointmentTime"
-                    name="appointmentTime"
+                    id='appointmentTime'
+                    name='appointmentTime'
                     value={formData.appointmentTime}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300"
+                    className='w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300'
                   >
-                    <option value="">Select time</option>
+                    <option value=''>Select time</option>
                     {timeSlots.map((time, index) => (
                       <option key={`time-${index}`} value={time}>
                         {time}
@@ -543,21 +597,27 @@ export default function NewAppointmentPage() {
             </div>
 
             {/* Duration and Service Type */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor='duration'
+                  className='block text-sm font-medium text-gray-700 mb-2'
+                >
                   Duration (minutes) *
                 </label>
                 <select
-                  id="duration"
-                  name="duration"
+                  id='duration'
+                  name='duration'
                   value={formData.duration}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300"
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300'
                 >
                   {durationOptions.map(option => (
-                    <option key={`duration-${option.value}`} value={option.value}>
+                    <option
+                      key={`duration-${option.value}`}
+                      value={option.value}
+                    >
                       {option.label}
                     </option>
                   ))}
@@ -565,19 +625,25 @@ export default function NewAppointmentPage() {
               </div>
 
               <div>
-                <label htmlFor="serviceType" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor='serviceType'
+                  className='block text-sm font-medium text-gray-700 mb-2'
+                >
                   Service Type *
                 </label>
                 <select
-                  id="serviceType"
-                  name="serviceType"
+                  id='serviceType'
+                  name='serviceType'
                   value={formData.serviceType}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300"
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300'
                 >
                   {serviceTypes.map(service => (
-                    <option key={`service-${service.value}`} value={service.value}>
+                    <option
+                      key={`service-${service.value}`}
+                      value={service.value}
+                    >
                       {service.label}
                     </option>
                   ))}
@@ -587,57 +653,63 @@ export default function NewAppointmentPage() {
 
             {/* Reason */}
             <div>
-              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor='reason'
+                className='block text-sm font-medium text-gray-700 mb-2'
+              >
                 Reason for Appointment *
               </label>
-              <div className="relative">
-                <FiFileText className="absolute left-3 top-3 text-gray-400" />
+              <div className='relative'>
+                <FiFileText className='absolute left-3 top-3 text-gray-400' />
                 <textarea
-                  id="reason"
-                  name="reason"
+                  id='reason'
+                  name='reason'
                   value={formData.reason}
                   onChange={handleInputChange}
                   required
                   rows={3}
-                  placeholder="Please describe the reason for this appointment..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 resize-none"
+                  placeholder='Please describe the reason for this appointment...'
+                  className='w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 resize-none'
                 />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor='notes'
+                className='block text-sm font-medium text-gray-700 mb-2'
+              >
                 Additional Notes
               </label>
               <textarea
-                id="notes"
-                name="notes"
+                id='notes'
+                name='notes'
                 value={formData.notes}
                 onChange={handleInputChange}
                 rows={2}
-                placeholder="Any additional information or special requirements..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 resize-none"
+                placeholder='Any additional information or special requirements...'
+                className='w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-300 resize-none'
               />
             </div>
 
             {/* Submit Button */}
-            <div className="flex gap-4 pt-6 border-t border-gray-200">
+            <div className='flex gap-4 pt-6 border-t border-gray-200'>
               <button
-                type="button"
+                type='button'
                 onClick={() => router.push('/Pharmacist/appointments')}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-300"
+                className='flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-300'
               >
                 Cancel
               </button>
               <button
-                type="submit"
+                type='submit'
                 disabled={submitting}
-                className="flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className='flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl'
               >
                 {submitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin' />
                     Creating...
                   </>
                 ) : (

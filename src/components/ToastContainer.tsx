@@ -1,7 +1,12 @@
 'use client';
 
 import { JSX, useEffect, useState } from 'react';
-import { FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import {
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaTimes,
+} from 'react-icons/fa';
 
 interface Toast {
   id: string;
@@ -17,13 +22,14 @@ export function ToastContainer() {
     const handleToast = (event: CustomEvent<Omit<Toast, 'id'>>) => {
       const toast: Toast = {
         id: Math.random().toString(36).substr(2, 9),
-        ...event.detail
+        ...event.detail,
       };
       setToasts(prev => [...prev, toast]);
     };
 
     window.addEventListener('showToast', handleToast as EventListener);
-    return () => window.removeEventListener('showToast', handleToast as EventListener);
+    return () =>
+      window.removeEventListener('showToast', handleToast as EventListener);
   }, []);
 
   const removeToast = (id: string) => {
@@ -33,15 +39,15 @@ export function ToastContainer() {
   const getIcon = (type: Toast['type']) => {
     switch (type) {
       case 'success':
-        return <FaCheckCircle className="h-5 w-5 text-green-500" />;
+        return <FaCheckCircle className='h-5 w-5 text-green-500' />;
       case 'error':
-        return <FaExclamationTriangle className="h-5 w-5 text-red-500" />;
+        return <FaExclamationTriangle className='h-5 w-5 text-red-500' />;
       case 'warning':
-        return <FaExclamationTriangle className="h-5 w-5 text-yellow-500" />;
+        return <FaExclamationTriangle className='h-5 w-5 text-yellow-500' />;
       case 'info':
-        return <FaInfoCircle className="h-5 w-5 text-blue-500" />;
+        return <FaInfoCircle className='h-5 w-5 text-blue-500' />;
       default:
-        return <FaInfoCircle className="h-5 w-5 text-gray-500" />;
+        return <FaInfoCircle className='h-5 w-5 text-gray-500' />;
     }
   };
 
@@ -61,8 +67,8 @@ export function ToastContainer() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {toasts.map((toast) => (
+    <div className='fixed top-4 right-4 z-50 space-y-2'>
+      {toasts.map(toast => (
         <ToastItem
           key={toast.id}
           toast={toast}
@@ -82,7 +88,12 @@ interface ToastItemProps {
   getBackgroundColor: (type: Toast['type']) => string;
 }
 
-function ToastItem({ toast, onRemove, getIcon, getBackgroundColor }: ToastItemProps) {
+function ToastItem({
+  toast,
+  onRemove,
+  getIcon,
+  getBackgroundColor,
+}: ToastItemProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onRemove(toast.id);
@@ -92,23 +103,31 @@ function ToastItem({ toast, onRemove, getIcon, getBackgroundColor }: ToastItemPr
   }, [toast.id, toast.duration, onRemove]);
 
   return (
-    <div className={`animate-fade-in flex items-center gap-3 p-4 rounded-lg border shadow-lg min-w-80 ${getBackgroundColor(toast.type)}`}>
+    <div
+      className={`animate-fade-in flex items-center gap-3 p-4 rounded-lg border shadow-lg min-w-80 ${getBackgroundColor(toast.type)}`}
+    >
       {getIcon(toast.type)}
-      <span className="flex-1 text-sm font-medium text-gray-900">{toast.message}</span>
+      <span className='flex-1 text-sm font-medium text-gray-900'>
+        {toast.message}
+      </span>
       <button
         onClick={() => onRemove(toast.id)}
-        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+        className='p-1 text-gray-400 hover:text-gray-600 transition-colors'
       >
-        <FaTimes className="h-4 w-4" />
+        <FaTimes className='h-4 w-4' />
       </button>
     </div>
   );
 }
 
 // Utility function to show toasts
-export const showToast = (message: string, type: Toast['type'] = 'success', duration?: number) => {
+export const showToast = (
+  message: string,
+  type: Toast['type'] = 'success',
+  duration?: number
+) => {
   const event = new CustomEvent('showToast', {
-    detail: { message, type, duration }
+    detail: { message, type, duration },
   });
   window.dispatchEvent(event);
 };

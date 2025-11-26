@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Schema, model, models, Document, Types } from "mongoose";
+ 
+import { Schema, model, models, Document, Types } from 'mongoose';
 
 export interface IProduct {
   name: string;
@@ -31,116 +31,119 @@ export interface IProductDocument extends IProduct, Document {
 
 const ProductSchema = new Schema<IProductDocument>(
   {
-    name: { 
-      type: String, 
-      required: [true, "Product name is required"], 
+    name: {
+      type: String,
+      required: [true, 'Product name is required'],
       trim: true,
-      minlength: [2, "Product name must be at least 2 characters"],
-      maxlength: [100, "Product name cannot exceed 100 characters"]
+      minlength: [2, 'Product name must be at least 2 characters'],
+      maxlength: [100, 'Product name cannot exceed 100 characters'],
     },
-    description: { 
-      type: String, 
-      required: [true, "Description is required"],
+    description: {
+      type: String,
+      required: [true, 'Description is required'],
       trim: true,
-      maxlength: [500, "Description cannot exceed 500 characters"]
+      maxlength: [500, 'Description cannot exceed 500 characters'],
     },
-    price: { 
-      type: Number, 
-      required: [true, "Price is required"],
-      min: [0, "Price cannot be negative"]
+    price: {
+      type: Number,
+      required: [true, 'Price is required'],
+      min: [0, 'Price cannot be negative'],
     },
-    costPrice: { 
-      type: Number, 
+    costPrice: {
+      type: Number,
       default: 0,
-      min: [0, "Cost price cannot be negative"]
+      min: [0, 'Cost price cannot be negative'],
     },
-    category: { 
-      type: String, 
-      required: [true, "Category is required"],
-      trim: true
+    category: {
+      type: String,
+      required: [true, 'Category is required'],
+      trim: true,
     },
-    image: { 
-      type: String, 
-      required: [true, "Image URL is required"]
+    image: {
+      type: String,
+      required: [true, 'Image URL is required'],
     },
-    inStock: { 
-      type: Boolean, 
-      default: true 
+    inStock: {
+      type: Boolean,
+      default: true,
     },
-    stockQuantity: { 
-      type: Number, 
-      required: [true, "Stock quantity is required"],
-      min: [0, "Stock quantity cannot be negative"],
-      default: 0
+    stockQuantity: {
+      type: Number,
+      required: [true, 'Stock quantity is required'],
+      min: [0, 'Stock quantity cannot be negative'],
+      default: 0,
     },
-    minStockLevel: { 
-      type: Number, 
+    minStockLevel: {
+      type: Number,
       default: 10,
-      min: [0, "Minimum stock level cannot be negative"]
+      min: [0, 'Minimum stock level cannot be negative'],
     },
     pharmacy: {
       type: Schema.Types.ObjectId,
-      ref: "Pharmacy",
-      required: [true, "Pharmacy is required"]
+      ref: 'Pharmacy',
+      required: [true, 'Pharmacy is required'],
     },
-    sku: { 
-      type: String, 
-      required: [true, "SKU is required"],
+    sku: {
+      type: String,
+      required: [true, 'SKU is required'],
       unique: true, // This automatically creates an index
       trim: true,
-      uppercase: true
+      uppercase: true,
     },
-    manufacturer: { 
+    manufacturer: {
       type: String,
-      required: [true, "Manufacturer is required"],
+      required: [true, 'Manufacturer is required'],
       trim: true,
-      maxlength: [100, "Manufacturer name cannot exceed 100 characters"]
+      maxlength: [100, 'Manufacturer name cannot exceed 100 characters'],
     },
-    requiresPrescription: { 
-      type: Boolean, 
-      default: false 
+    requiresPrescription: {
+      type: Boolean,
+      default: false,
     },
-    isControlledSubstance: { 
-      type: Boolean, 
-      default: false 
+    isControlledSubstance: {
+      type: Boolean,
+      default: false,
     },
-    sideEffects: { 
-      type: String,
-      trim: true,
-      maxlength: [1000, "Side effects description cannot exceed 1000 characters"]
-    },
-    dosage: { 
+    sideEffects: {
       type: String,
       trim: true,
-      maxlength: [500, "Dosage information cannot exceed 500 characters"]
+      maxlength: [
+        1000,
+        'Side effects description cannot exceed 1000 characters',
+      ],
     },
-    activeIngredients: { 
+    dosage: {
       type: String,
       trim: true,
-      maxlength: [500, "Active ingredients cannot exceed 500 characters"]
+      maxlength: [500, 'Dosage information cannot exceed 500 characters'],
     },
-    barcode: { 
+    activeIngredients: {
       type: String,
-      required: [true, "Barcode is required"],
-      trim: true
+      trim: true,
+      maxlength: [500, 'Active ingredients cannot exceed 500 characters'],
+    },
+    barcode: {
+      type: String,
+      required: [true, 'Barcode is required'],
+      trim: true,
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Created by user is required"]
-    }
+      ref: 'User',
+      required: [true, 'Created by user is required'],
+    },
   },
-  { 
+  {
     timestamps: true,
-    toJSON: { 
-      transform: function(_doc, ret) {
+    toJSON: {
+      transform: function (_doc, ret) {
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),
-          ...rest
+          ...rest,
         };
-      }
-    }
+      },
+    },
   }
 );
 
@@ -157,6 +160,7 @@ ProductSchema.index({ createdAt: -1 });
 // Compound index for unique product names per pharmacy
 ProductSchema.index({ name: 1, pharmacy: 1 }, { unique: true });
 
-const Product = models.Product || model<IProductDocument>("Product", ProductSchema);
+const Product =
+  models.Product || model<IProductDocument>('Product', ProductSchema);
 
 export default Product;

@@ -10,7 +10,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variantClasses = {
   primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
   secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500',
+  outline:
+    'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500',
   ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-blue-500',
 };
 
@@ -21,7 +22,18 @@ const sizeClasses = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant = 'primary', size = 'md', loading = false, children, disabled, ...props }, ref) => {
+  (
+    {
+      className = '',
+      variant = 'primary',
+      size = 'md',
+      loading = false,
+      children,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
     return (
       <button
         ref={ref}
@@ -37,7 +49,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading && <FiLoader className="animate-spin -ml-1 mr-2 h-4 w-4" />}
+        {loading && <FiLoader className='animate-spin -ml-1 mr-2 h-4 w-4' />}
         {children}
       </button>
     );

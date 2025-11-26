@@ -3,7 +3,15 @@
 'use client';
 
 import { useState } from 'react';
-import { FaPlus, FaTimes, FaSpinner, FaImage, FaIdCard, FaTag, FaDollarSign } from 'react-icons/fa';
+import {
+  FaPlus,
+  FaTimes,
+  FaSpinner,
+  FaImage,
+  FaIdCard,
+  FaTag,
+  FaDollarSign,
+} from 'react-icons/fa';
 import { IoMdMedical } from 'react-icons/io';
 
 interface ShopFormData {
@@ -26,13 +34,17 @@ interface AddShopFormProps {
   onShopAdded: () => void;
 }
 
-export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFormProps) {
+export default function AddShopForm({
+  isOpen,
+  onClose,
+  onShopAdded,
+}: AddShopFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ShopFormData>({
     id: '',
     name: '',
     price: 0,
-    image: ''
+    image: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -64,7 +76,7 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -72,15 +84,15 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
       // For development - using mock API response
       // Replace this with your actual API call when ready
       console.log('Submitting shop data:', formData);
-      
+
       // Mock API call - remove this when real API is ready
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Mock success response
       const mockResponse = {
         success: true,
         message: 'Shop added successfully!',
-        data: { ...formData, createdAt: new Date().toISOString() }
+        data: { ...formData, createdAt: new Date().toISOString() },
       };
 
       if (mockResponse.success) {
@@ -114,8 +126,6 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
       } else {
         alert(`Error: ${result.message}`);
       }
-  
-
     } catch (error) {
       console.error('Failed to add shop:', error);
       alert('Failed to add shop. Please try again.');
@@ -128,9 +138,9 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' ? parseFloat(value) || 0 : value
+      [name]: name === 'price' ? parseFloat(value) || 0 : value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -140,127 +150,136 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+      <div className='bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto'>
+        <div className='p-6'>
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <IoMdMedical className="h-6 w-6 text-blue-600" />
-              <h2 className="text-2xl font-bold">Add New Pharmacy</h2>
+          <div className='flex items-center justify-between mb-6'>
+            <div className='flex items-center gap-2'>
+              <IoMdMedical className='h-6 w-6 text-blue-600' />
+              <h2 className='text-2xl font-bold'>Add New Pharmacy</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className='p-1 text-gray-400 hover:text-gray-600 transition-colors'
               disabled={loading}
             >
-              <FaTimes className="h-5 w-5" />
+              <FaTimes className='h-5 w-5' />
             </button>
           </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+
+          <form onSubmit={handleSubmit} className='space-y-4'>
             {/* Shop ID */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <FaIdCard className="text-blue-500" />
+              <label className='text-sm font-medium text-gray-700 mb-1 flex items-center gap-2'>
+                <FaIdCard className='text-blue-500' />
                 Shop ID *
               </label>
               <input
-                type="text"
-                name="id"
+                type='text'
+                name='id'
                 value={formData.id}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.id ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="pharmacy-001"
+                placeholder='pharmacy-001'
                 disabled={loading}
               />
-              {errors.id && <p className="text-red-500 text-sm mt-1">{errors.id}</p>}
+              {errors.id && (
+                <p className='text-red-500 text-sm mt-1'>{errors.id}</p>
+              )}
             </div>
 
             {/* Shop Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 items-center gap-2">
-                <FaTag className="text-green-500" />
+              <label className='block text-sm font-medium text-gray-700 mb-1 items-center gap-2'>
+                <FaTag className='text-green-500' />
                 Shop Name *
               </label>
               <input
-                type="text"
-                name="name"
+                type='text'
+                name='name'
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="City Pharmacy"
+                placeholder='City Pharmacy'
                 disabled={loading}
               />
-              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              {errors.name && (
+                <p className='text-red-500 text-sm mt-1'>{errors.name}</p>
+              )}
             </div>
 
             {/* Price */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 items-center gap-2">
-                <FaDollarSign className="text-yellow-500" />
+              <label className='block text-sm font-medium text-gray-700 mb-1 items-center gap-2'>
+                <FaDollarSign className='text-yellow-500' />
                 Price *
               </label>
               <input
-                type="number"
-                name="price"
+                type='number'
+                name='price'
                 value={formData.price}
                 onChange={handleChange}
-                step="0.01"
-                min="0"
+                step='0.01'
+                min='0'
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.price ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="0.00"
+                placeholder='0.00'
                 disabled={loading}
               />
-              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+              {errors.price && (
+                <p className='text-red-500 text-sm mt-1'>{errors.price}</p>
+              )}
             </div>
 
             {/* Image URL */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <FaImage className="text-purple-500" />
+              <label className='text-sm font-medium text-gray-700 mb-1 flex items-center gap-2'>
+                <FaImage className='text-purple-500' />
                 Image URL *
               </label>
               <input
-                type="url"
-                name="image"
+                type='url'
+                name='image'
                 value={formData.image}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.image ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="https://example.com/image.jpg"
+                placeholder='https://example.com/image.jpg'
                 disabled={loading}
               />
-              {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
+              {errors.image && (
+                <p className='text-red-500 text-sm mt-1'>{errors.image}</p>
+              )}
             </div>
 
             {/* Image Preview */}
             {formData.image && isValidUrl(formData.image) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
                   Image Preview
                 </label>
-                <div className="border rounded-lg p-2 bg-gray-50">
-                  <div className="relative w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                <div className='border rounded-lg p-2 bg-gray-50'>
+                  <div className='relative w-full h-32 bg-gray-100 rounded flex items-center justify-center'>
                     <img
                       src={formData.image}
-                      alt="Preview"
-                      className="w-full h-full object-cover rounded"
-                      onError={(e) => {
+                      alt='Preview'
+                      className='w-full h-full object-cover rounded'
+                      onError={e => {
                         (e.target as HTMLImageElement).style.display = 'none';
-                        const errorDiv = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                        const errorDiv = (e.target as HTMLImageElement)
+                          .nextElementSibling as HTMLElement;
                         if (errorDiv) errorDiv.classList.remove('hidden');
                       }}
                     />
-                    <div className="hidden text-center text-gray-500 text-sm">
-                      <FaImage className="mx-auto h-8 w-8 mb-2 text-gray-300" />
+                    <div className='hidden text-center text-gray-500 text-sm'>
+                      <FaImage className='mx-auto h-8 w-8 mb-2 text-gray-300' />
                       Unable to load image preview
                     </div>
                   </div>
@@ -269,29 +288,29 @@ export default function AddShopForm({ isOpen, onClose, onShopAdded }: AddShopFor
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className='flex gap-3 pt-4'>
               <button
-                type="button"
+                type='button'
                 onClick={onClose}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className='flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
                 disabled={loading}
               >
-                <FaTimes className="h-4 w-4" />
+                <FaTimes className='h-4 w-4' />
                 Cancel
               </button>
               <button
-                type="submit"
+                type='submit'
                 disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className='flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {loading ? (
                   <>
-                    <FaSpinner className="h-4 w-4 animate-spin" />
+                    <FaSpinner className='h-4 w-4 animate-spin' />
                     Adding...
                   </>
                 ) : (
                   <>
-                    <FaPlus className="h-4 w-4" />
+                    <FaPlus className='h-4 w-4' />
                     Add Shop
                   </>
                 )}

@@ -7,16 +7,21 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/option';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     await connectDB();
 
     const deliveries = await Order.find({
       orderType: 'delivery',
-      status: { $in: ['pending', 'confirmed', 'processing', 'ready', 'dispatched'] }
+      status: {
+        $in: ['pending', 'confirmed', 'processing', 'ready', 'dispatched'],
+      },
     })
       .populate('customer', 'name phone')
       .populate('items.product', 'name requiresPrescription')
@@ -25,9 +30,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: { deliveries }
+      data: { deliveries },
     });
-
   } catch (error) {
     console.error('Error fetching deliveries:', error);
     return NextResponse.json(

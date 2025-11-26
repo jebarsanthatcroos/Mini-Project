@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 advanced ui desing react-hook-form react-icons zod nodemailer framer-motion
+api/doctor/appointments/stats/
+api/doctor/appointments/[id]/stats
+api/doctor/appointments/[id]
+api/doctor/appointments
+
+i would like to ask to ask you to differentite the components
 
 ## Getting Started
 
@@ -36,31 +42,31 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 app/
-  api/
-    lab/
-      tests/
-        route.ts              # GET, POST
-        [id]/
-          route.ts           # GET, PUT, DELETE
-        categories/
-          route.ts           # GET
-      test-requests/
-        route.ts             # GET, POST
-        [id]/
-          route.ts           # GET, PUT, DELETE
-        status/
-          route.ts           # GET
-        technician/
-          [technicianId]/
-            route.ts         # GET
-        patient/
-          [patientId]/
-            route.ts         # GET
-      dashboard/
-        [technicianId]/
-          route.ts           # GET
-      upload/
-        route.ts             # POST
-    users/
-      technicians/
-        route.ts             # GET
+api/
+lab/
+tests/
+route.ts # GET, POST
+[id]/
+route.ts # GET, PUT, DELETE
+categories/
+route.ts # GET
+test-requests/
+route.ts # GET, POST
+[id]/
+route.ts # GET, PUT, DELETE
+status/
+route.ts # GET
+technician/
+[technicianId]/
+route.ts # GET
+patient/
+[patientId]/
+route.ts # GET
+dashboard/
+[technicianId]/
+route.ts # GET
+upload/
+route.ts # POST
+users/
+technicians/
+route.ts # GET

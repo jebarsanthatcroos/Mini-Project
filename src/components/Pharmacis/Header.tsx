@@ -7,9 +7,9 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import Logo from '../Logo.static';
-import {  
-  FiUser, 
-  FiLogOut, 
+import {
+  FiUser,
+  FiLogOut,
   FiSettings,
   FiHome,
   FiPackage,
@@ -40,14 +40,14 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+    <header className='bg-white shadow-sm sticky top-0 z-50'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16'>
         {/* Left - Logo / Brand */}
-       < Logo />
+        <Logo />
 
         {/* Center - Menu Items */}
-        <nav className="hidden md:flex space-x-6">
-          {menuItems.map((item) => {
+        <nav className='hidden md:flex space-x-6'>
+          {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
@@ -60,7 +60,7 @@ export default function Header() {
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className='w-5 h-5' />
                 {item.name}
               </Link>
             );
@@ -68,12 +68,12 @@ export default function Header() {
         </nav>
 
         {/* Right - Actions */}
-        <div className="flex items-center gap-4 relative">
+        <div className='flex items-center gap-4 relative'>
           {/* User Menu */}
-          <div className="relative">
+          <div className='relative'>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-all"
+              className='flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-all'
             >
               {session?.user?.image ? (
                 <Image
@@ -81,51 +81,50 @@ export default function Header() {
                   alt={session.user.name || 'User'}
                   width={32}
                   height={32}
-                  className="rounded-full object-cover"
+                  className='rounded-full object-cover'
                 />
               ) : (
-                <FiUser className="w-5 h-5 text-gray-600" />
+                <FiUser className='w-5 h-5 text-gray-600' />
               )}
-              <span className="hidden sm:inline text-gray-700 font-medium">
+              <span className='hidden sm:inline text-gray-700 font-medium'>
                 {session?.user?.name || 'Pharmacist'}
               </span>
             </button>
 
             {/* Dropdown */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden z-50">
+              <div className='absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden z-50'>
                 <Link
-                  href="/Pharmacist/settings"
-                  className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
+                  href='/Pharmacist/settings'
+                  className='flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700'
                   onClick={() => setIsDropdownOpen(false)}
                 >
-                  <FiSettings className="w-4 h-4" />
+                  <FiSettings className='w-4 h-4' />
                   Settings
                 </Link>
-                 <Link
-                  href="/Pharmacist/analytics"
-                  className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
+                <Link
+                  href='/Pharmacist/analytics'
+                  className='flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700'
                   onClick={() => setIsDropdownOpen(false)}
                 >
-                  <FiBarChart2 className="w-4 h-4" />
+                  <FiBarChart2 className='w-4 h-4' />
                   Analytics
                 </Link>
 
-                 <Link
-                  href="/Pharmacist/orders"
-                  className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
+                <Link
+                  href='/Pharmacist/orders'
+                  className='flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700'
                   onClick={() => setIsDropdownOpen(false)}
                 >
-                  <FiFileText className="w-4 h-4" />
+                  <FiFileText className='w-4 h-4' />
                   Orders
                 </Link>
 
-
                 <button
                   onClick={() => signOut()}
-                  className="flex items-center gap-2 w-full px-4 py-3 hover:bg-gray-100 text-gray-700"
+                  className='flex items-center gap-2 w-full px-4 py-3 hover:bg-gray-100 text-gray-700'
                 >
-                  <FiLogOut className="w-4 h-4" />
+                  <FiLogOut className='w-4 h-4' />
                   Logout
                 </button>
               </div>

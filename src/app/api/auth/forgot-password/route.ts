@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransport } from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
-import { connectDB } from "@/lib/mongodb";
-import User from "@/models/User";
-import PasswordResetToken from "@/models/PasswordResetToken";
+import { connectDB } from '@/lib/mongodb';
+import User from '@/models/User';
+import PasswordResetToken from '@/models/PasswordResetToken';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Delete any existing tokens for this email
-    await PasswordResetToken.deleteMany({ 
+    await PasswordResetToken.deleteMany({
       email: email.toLowerCase(),
-      used: false 
+      used: false,
     });
 
     // Store new token
@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
       { message: 'If the email exists, a reset link will be sent' },
       { status: 200 }
     );
-
   } catch (error) {
     console.error('Forgot password error:', error);
     return NextResponse.json(
@@ -136,7 +135,6 @@ async function sendResetEmail(email: string, token: string) {
 
     await transporter.sendMail(mailOptions);
     return true;
-
   } catch (error) {
     console.error('Email sending error:', error);
     return false;

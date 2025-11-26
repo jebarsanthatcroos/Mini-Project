@@ -1,205 +1,318 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import NextAuth, { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import GitHubProvider from "next-auth/providers/github";
-import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import User, { IUserDocument, UserRole } from "@/models/User";
-import { IUserCredentials } from "@/types/next-auth";
+import NextAuth, { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
+import GitHubProvider from 'next-auth/providers/github';
+import { connectDB } from '@/lib/mongodb';
+import UserModel, { UserRole } from '@/models/User';
+import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error("NEXTAUTH_SECRET is not set");
+// Your existing NextAuth configuration and types...
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      role?: UserRole;
+      phone?: string;
+      department?: string;
+      specialization?: string;
+      licenseNumber?: string;
+      address?: string;
+      bio?: string;
+      isActive?: boolean;
+      lastLogin?: Date;
+    };
+    accessToken?: string;
+  }
+
+  interface User {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: UserRole;
+    phone?: string;
+    department?: string;
+    specialization?: string;
+    licenseNumber?: string;
+    address?: string;
+    bio?: string;
+    isActive?: boolean;
+    lastLogin?: Date;
+    password?: string;
+  }
 }
 
-const authOptions: NextAuthOptions = {
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    picture?: string | null;
+    role?: UserRole;
+    phone?: string;
+    department?: string;
+    specialization?: string;
+    licenseNumber?: string;
+    address?: string;
+    bio?: string;
+    isActive?: boolean;
+    lastLogin?: Date;
+    accessToken?: string;
+  }
+}
+
+// ==================== Helper Functions ====================
+
+const createUserObject = (user: any) => ({
+  id: user._id?.toString() || user.id,
+  name: user.name,
+  email: user.email,
+  image: user.image,
+  role: user.role,
+  phone: user.phone,
+  department: user.department,
+  specialization: user.specialization,
+  licenseNumber: user.licenseNumber,
+  address: user.address,
+  bio: user.bio,
+  isActive: user.isActive,
+  lastLogin: user.lastLogin,
+});
+
+const updateLastLogin = async (userId: string): Promise<void> => {
+  try {
+    await UserModel.findByIdAndUpdate(
+      userId,
+      { lastLogin: new Date() },
+      { new: true }
+    );
+  } catch (error) {
+    console.error('Failed to update last login:', error);
+  }
+};
+
+const handleOAuthUser = async (user: any, provider: string) => {
+  try {
+    await connectDB();
+
+    let dbUser = await UserModel.findOne({
+      email: user.email?.toLowerCase().trim(),
+    });
+
+    if (!dbUser) {
+      dbUser = await UserModel.create({
+        name: user.name,
+        email: user.email?.toLowerCase().trim(),
+        image: user.image,
+        role: 'USER',
+        isActive: true,
+        emailVerified: new Date(),
+        lastLogin: new Date(),
+        authProvider: provider, // Track which provider created the account
+      });
+      console.log(`New ${provider} user created:`, user.email);
+    } else {
+      dbUser = await UserModel.findByIdAndUpdate(
+        dbUser._id,
+        {
+          lastLogin: new Date(),
+          image: user.image || dbUser.image,
+          name: user.name || dbUser.name,
+          authProvider: provider, // Update provider if changed
+        },
+        { new: true }
+      );
+      console.log(`${provider} user updated:`, user.email);
+    }
+
+    return dbUser;
+  } catch (error) {
+    console.error(`${provider} user handling error:`, error);
+    throw new Error(`Failed to process ${provider} user`);
+  }
+};
+
+const validateCredentials = (email?: string, password?: string) => {
+  if (!email || !password) {
+    return {
+      isValid: false,
+      error: 'Email and password are required',
+    };
+  }
+
+  if (password.length < 6) {
+    return {
+      isValid: false,
+      error: 'Password must be at least 6 characters',
+    };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return {
+      isValid: false,
+      error: 'Invalid email format',
+    };
+  }
+
+  return { isValid: true };
+};
+
+export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    GitHubProvider({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-      authorization: {
-        params: {
-          scope: "read:user user:email",
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Credentials',
+      credentials: {
+        email: {
+          label: 'Email',
+          type: 'email',
+          placeholder: 'jebarsnthatcroos@email.com',
+        },
+        password: {
+          label: 'Password',
+          type: 'password',
+          placeholder: '••••••••',
         },
       },
-    }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials): Promise<IUserCredentials | null> {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email and password are required");
-          }
+      async authorize(credentials) {
+        const validation = validateCredentials(
+          credentials?.email,
+          credentials?.password
+        );
 
+        if (!validation.isValid) {
+          throw new Error(validation.error);
+        }
+
+        try {
           await connectDB();
 
-          const user = await User.findOne({ email: credentials.email }).select('+password') as IUserDocument | null;
-          
+          const user = await UserModel.findOne({
+            email: credentials!.email.toLowerCase().trim(),
+            isActive: true,
+          }).select('+password');
+
           if (!user) {
-            throw new Error("No user found with this email");
+            throw new Error('Invalid email or password');
           }
 
           if (!user.password) {
-            throw new Error("This account uses social login. Please sign in with Google or GitHub.");
+            throw new Error(
+              'This account uses social login. Please sign in with your social account.'
+            );
           }
 
-          const isValid = await bcrypt.compare(credentials.password, user.password);
-          if (!isValid) {
-            throw new Error("Invalid password");
+          const isPasswordValid = await bcrypt.compare(
+            credentials!.password,
+            user.password
+          );
+
+          if (!isPasswordValid) {
+            throw new Error('Invalid email or password');
           }
 
-          // Update last login
-          await User.findByIdAndUpdate(user._id, { 
-            lastLogin: new Date() 
-          });
+          await updateLastLogin(user._id.toString());
 
-          // Return user data without password
-          const userData: IUserCredentials = {
-            id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            image: user.image,
-            phone: user.phone,
-            department: user.department,
-            specialization: user.specialization,
-            address: user.address,
-            bio: user.bio,
-            isActive: user.isActive,
-            lastLogin: user.lastLogin,
-          };
-
-          return userData;
-        } catch (error: any) {
-          console.error("Auth error:", error.message);
-          throw new Error(error.message || "Authentication failed");
+          console.log('User authenticated successfully:', user.email);
+          return createUserObject(user);
+        } catch (error) {
+          console.error('Credentials auth error:', error);
+          if (error instanceof Error) {
+            throw error;
+          }
+          throw new Error('Authentication failed. Please try again.');
         }
+      },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: 'consent',
+          access_type: 'offline',
+          response_type: 'code',
+        },
+      },
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      profile(profile) {
+        return {
+          id: profile.id.toString(),
+          name: profile.name || profile.login,
+          email: profile.email,
+          image: profile.avatar_url,
+        };
       },
     }),
   ],
 
   callbacks: {
-    async signIn({ user, account }) {
-      try {
-        await connectDB();
-        
-        if (account?.provider !== "credentials") {
-          // Handle GitHub email scope issues
-          if (account?.provider === "github" && !user.email) {
-            throw new Error("GitHub did not provide an email address. Please ensure your GitHub account has a public email or grant email access.");
-          }
-
-          const existingUser = await User.findOne({ email: user.email });
-          
-          if (!existingUser) {
-            // Create new user for OAuth
-            await User.create({
-              name: user.name,
-              email: user.email,
-              image: user.image,
-              role: "USER" as UserRole,
-              phone: user.phone || "",
-              department: user.department || "",
-              specialization: user.specialization || "",
-              address: user.address || "",
-              bio: user.bio || "",
-              isActive: true,
-              lastLogin: new Date(),
-            });
-          } else {
-            // Update existing user with OAuth data and last login
-            await User.updateOne(
-              { email: user.email },
-              { 
-                $set: { 
-                  name: user.name,
-                  image: user.image,
-                  lastLogin: new Date(),
-                } 
-              }
-            );
-          }
-        } else {
-          // For credentials login, update last login
-          if (user.email) {
-            await User.updateOne(
-              { email: user.email },
-              { 
-                $set: { 
-                  lastLogin: new Date(),
-                } 
-              }
-            );
-          }
-        }
-        
-        return true;
-      } catch (error: any) {
-        console.error("SignIn callback error:", error.message);
-        return `/auth/error?error=${encodeURIComponent(error.message)}`;
-      }
-    },
-
-    async jwt({ token, user, account, trigger, session }) {
-      // Handle session update trigger
-      if (trigger === "update" && session?.user) {
-        token.name = session.user.name;
-        token.phone = session.user.phone;
-        token.department = session.user.department;
-        token.specialization = session.user.specialization;
-        token.address = session.user.address;
-        token.bio = session.user.bio;
-      }
-
-      if (account) {
-        token.accessToken = account.access_token;
-      }
-      
-      // Add user info to token on sign in
+    async jwt({ token, user, account, trigger }) {
       if (user) {
         token.id = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        token.picture = user.image;
         token.role = user.role;
         token.phone = user.phone;
         token.department = user.department;
         token.specialization = user.specialization;
+        token.licenseNumber = user.licenseNumber;
         token.address = user.address;
         token.bio = user.bio;
         token.isActive = user.isActive;
         token.lastLogin = user.lastLogin;
-      }
 
-      // Always refresh user data from database for latest information
-      if (token.email) {
-        try {
-          await connectDB();
-          const dbUser = await User.findOne({ email: token.email });
-          if (dbUser) {
+        if (account?.provider !== 'credentials') {
+          try {
+            const dbUser = await handleOAuthUser(
+              user,
+              account?.provider || 'unknown'
+            );
             token.id = dbUser._id.toString();
-            token.name = dbUser.name;
-            token.email = dbUser.email;
-            token.picture = dbUser.image;
             token.role = dbUser.role;
             token.phone = dbUser.phone;
             token.department = dbUser.department;
             token.specialization = dbUser.specialization;
+            token.licenseNumber = dbUser.licenseNumber;
             token.address = dbUser.address;
             token.bio = dbUser.bio;
             token.isActive = dbUser.isActive;
             token.lastLogin = dbUser.lastLogin;
+          } catch (error) {
+            console.error('OAuth token update error:', error);
+          }
+        }
+      }
+
+      if (trigger === 'update') {
+        try {
+          await connectDB();
+          const dbUser = await UserModel.findById(token.id);
+
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.phone = dbUser.phone;
+            token.department = dbUser.department;
+            token.specialization = dbUser.specialization;
+            token.isActive = dbUser.isActive;
           }
         } catch (error) {
-          console.error("JWT callback error:", error);
+          console.error('Token update error:', error);
         }
       }
 
@@ -207,48 +320,157 @@ const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      // Assign all token data to session
-      session.user = {
-        id: token.id as string,
-        name: token.name,
-        email: token.email,
-        image: token.picture,
-        role: token.role as UserRole,
-        phone: token.phone as string,
-        department: token.department as string,
-        specialization: token.specialization as string,
-        address: token.address as string,
-        bio: token.bio as string,
-        isActive: token.isActive as boolean,
-        lastLogin: token.lastLogin as Date,
-      };
-      
-      session.accessToken = token.accessToken as string;
-      
+      if (token && session.user) {
+        session.user = {
+          id: token.id,
+          name: token.name,
+          email: token.email,
+          image: token.picture,
+          role: token.role,
+          phone: token.phone,
+          department: token.department,
+          specialization: token.specialization,
+          licenseNumber: token.licenseNumber,
+          address: token.address,
+          bio: token.bio,
+          isActive: token.isActive,
+          lastLogin: token.lastLogin,
+        };
+        session.accessToken = token.accessToken;
+      }
+
       return session;
     },
 
+    async signIn({ user, account }) {
+      try {
+        if (account?.provider === 'credentials') {
+          return true;
+        }
+
+        // Handle both Google and GitHub OAuth
+        if (
+          (account?.provider === 'google' || account?.provider === 'github') &&
+          user.email
+        ) {
+          await connectDB();
+
+          const dbUser = await UserModel.findOne({
+            email: user.email.toLowerCase().trim(),
+          });
+
+          if (!dbUser || dbUser.isActive) {
+            return true;
+          }
+
+          console.warn(`Inactive user attempted sign in: ${user.email}`);
+          return '/auth/error?error=AccountDisabled';
+        }
+
+        return false;
+      } catch (error) {
+        console.error('Sign in callback error:', error);
+        return false;
+      }
+    },
+
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
-    }
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      } else if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      return baseUrl;
+    },
   },
 
   pages: {
     signIn: '/auth/signin',
+    signOut: '/auth/signout',
     error: '/auth/error',
+    verifyRequest: '/auth/verify-request',
+    newUser: '/auth/new-user',
   },
 
   session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
   },
 
-  debug: process.env.NODE_ENV === "development",
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60,
+  },
 
   secret: process.env.NEXTAUTH_SECRET,
+
+  debug: process.env.NODE_ENV === 'development',
+
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      console.log(`User signed in: ${user.email} via ${account?.provider}`);
+      if (isNewUser) {
+        console.log(`New user registered: ${user.email}`);
+      }
+    },
+    async signOut({ token }) {
+      console.log(`User signed out: ${token.email}`);
+    },
+    async createUser({ user }) {
+      console.log(`User created: ${user.email}`);
+    },
+    async updateUser({ user }) {
+      console.log(`User updated: ${user.email}`);
+    },
+  },
 };
 
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST, authOptions };
+// Export named handlers for Next.js App Router
+export const GET = NextAuth(authOptions);
+export const POST = NextAuth(authOptions);
+
+// Sign Up Schema
+export const signUpSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, 'Name must be at least 2 characters')
+      .max(50, 'Name must be less than 50 characters')
+      .regex(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
+    email: z
+      .string()
+      .email('Please enter a valid email address')
+      .min(1, 'Email is required'),
+    password: z
+      .string()
+      .min(6, 'Password must be at least 6 characters')
+      .max(100, 'Password is too long')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(
+        /[^A-Za-z0-9]/,
+        'Password must contain at least one special character'
+      ),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type SignUpFormData = z.infer<typeof signUpSchema>;
+
+// Sign In Schema
+export const signInSchema = z.object({
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .min(1, 'Email is required'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(6, 'Password must be at least 6 characters'),
+});
+
+export type SignInFormData = z.infer<typeof signInSchema>;
