@@ -57,7 +57,7 @@ export function UpcomingAppointments() {
     <div className="bg-white rounded-lg shadow-sm">
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">Upcoming Appointments</h2>
-        <p className="text-sm text-gray-600 mt-1">Today's schedule</p>
+        <p className="text-sm text-gray-600 mt-1">Today&apos;s schedule</p>
       </div>
       
       <div className="divide-y divide-gray-200">
@@ -65,7 +65,7 @@ export function UpcomingAppointments() {
           <div key={appointment.id} className="p-6 hover:bg-gray-50 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <FiUser className="h-6 w-6 text-blue-600" />
                   </div>

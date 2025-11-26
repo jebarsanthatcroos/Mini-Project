@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { StatsCards } from '@/components/Doctor/StatsCards';
@@ -116,11 +117,14 @@ export default function DoctorDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             {user.image && (
-              <img
-                src={user.image}
-                alt="Profile"
-                className="w-12 h-12 rounded-full border-2 border-gray-200"
-              />
+               <Image
+                   src={user.image}
+                   alt={user.name || 'Profile'}
+                    width={32}
+                   height={32} 
+                   className="w-12 h-12 rounded-full border-2 border-gray-200"
+                />
+              
             )}
             <Button
               variant="outline"

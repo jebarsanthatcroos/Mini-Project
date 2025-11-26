@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FiHome,
-  FiCalendar,
   FiUsers,
   FiFileText,
-  FiDollarSign,
   FiSettings,
   FiMenu,
   FiX,
@@ -41,11 +39,13 @@ export function LabSidebar() {
 
   // Handle hydration
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   // Close sidebar when route changes on mobile
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
   }, [pathname]);
 
@@ -84,7 +84,7 @@ export function LabSidebar() {
       `}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
           <Link href="/lab" className="flex items-center">
-            <div className="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="shrink-0 w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <FiDroplet className="text-white text-sm" />
             </div>
             <span className="ml-3 text-xl font-bold text-gray-900">Lab Portal</span>
@@ -101,7 +101,7 @@ export function LabSidebar() {
         {/* User Info */}
         <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <FiUser className="h-5 w-5 text-blue-600" />
               </div>
@@ -137,7 +137,7 @@ export function LabSidebar() {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon className={`
-                    mr-3 h-5 w-5 flex-shrink-0 transition-colors
+                    mr-3 h-5 w-5 shrink-0 transition-colors
                     ${isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}
                   `} />
                   {item.name}
@@ -152,7 +152,7 @@ export function LabSidebar() {
           {/* Quick Stats */}
           <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Today's Stats
+              Today&apos;s Stats
             </h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">

@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions, User } from "next-auth";
+import NextAuth, { NextAuthOptions} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { connectDB } from "./mongodb";
@@ -102,12 +102,11 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid email or password");
           }
 
-          // Update last login
           await UserModel.findByIdAndUpdate(user._id, { 
             lastLogin: new Date() 
           });
 
-          // Return user object without password
+        
           return {
             id: user._id.toString(),
             name: user.name,
@@ -164,26 +163,22 @@ export const authOptions: NextAuthOptions = {
             let dbUser = await UserModel.findOne({ email: user.email });
             
             if (!dbUser) {
-              // Create new user for OAuth sign-in
               dbUser = await UserModel.create({
                 name: user.name,
                 email: user.email,
                 image: user.image,
-                role: "USER", // Default role for OAuth users
+                role: "USER", 
                 isActive: true,
                 emailVerified: new Date(),
                 lastLogin: new Date(),
               });
             } else {
-              // Update existing user
               await UserModel.findByIdAndUpdate(dbUser._id, {
                 lastLogin: new Date(),
                 image: user.image,
                 name: user.name,
               });
             }
-
-            // Update token with database user data
             token.id = dbUser._id.toString();
             token.role = dbUser.role;
             token.phone = dbUser.phone;
@@ -224,14 +219,13 @@ export const authOptions: NextAuthOptions = {
 
       return session;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account}) {
       try {
-        // Allow sign in for credentials provider
+        
         if (account?.provider === "credentials") {
           return true;
         }
 
-        // For OAuth providers, check if user exists and is active
         if (account?.provider === "google" && user.email) {
           await connectDB();
           
@@ -241,9 +235,7 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!dbUser) {
-            // You might want to redirect to a registration page
-            // or automatically create the user (as done in jwt callback)
-            return true; // Allow sign in, user will be created in jwt callback
+            return true; 
           }
 
           return true;
@@ -256,9 +248,8 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
+      
       if (url.startsWith("/")) return `${baseUrl}${url}`;
-      // Allows callback URLs on the same origin
       else if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     }
@@ -269,7 +260,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60, 
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",

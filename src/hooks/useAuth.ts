@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
@@ -20,6 +21,7 @@ export interface AuthUser {
 }
 
 export function useAuth() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status, update } = useSession();
   const router = useRouter();
 

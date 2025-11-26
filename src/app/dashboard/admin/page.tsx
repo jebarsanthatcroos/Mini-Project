@@ -83,7 +83,7 @@ export default function AdminDashboard() {
           Welcome back, {session?.user?.name}!
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Here's what's happening with your healthcare system today.
+          Here&apos;s what&apos;s happening with your healthcare system today.
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
             >
               <div className="p-5">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <div className={`p-3 rounded-md ${item.color}`}>
                       <Icon className="h-6 w-6 text-white" />
                     </div>

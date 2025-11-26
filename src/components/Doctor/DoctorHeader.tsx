@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import Image from 'next/image';
 import { 
   FiBell, 
   FiSearch, 
@@ -72,11 +73,15 @@ export function DoctorHeader() {
               className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100"
             >
               {user.image ? (
-                <img
-                  src={user.image}
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full"
-                />
+                 <Image
+                    src={user.image}
+                    alt={user.name || 'Profile'}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-full"
+                  />
+
+
               ) : (
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">

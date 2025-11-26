@@ -1,11 +1,8 @@
 import { 
   FiPlus, 
-  FiCalendar, 
   FiUser, 
   FiFileText,
   FiMessageSquare,
-  FiDownload,
-  FiSettings
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 

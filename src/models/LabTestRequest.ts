@@ -141,6 +141,7 @@ LabTestRequestSchema.virtual('isOverdue').get(function(this: ILabTestRequestDocu
   const test = this.populated('test') || this.test;
   if (test && typeof test === 'object' && 'duration' in test) {
     const expectedCompletion = new Date(this.requestedDate);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expectedCompletion.setMinutes(expectedCompletion.getMinutes() + (test as any).duration);
     return new Date() > expectedCompletion;
   }

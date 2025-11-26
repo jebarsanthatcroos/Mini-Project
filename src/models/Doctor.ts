@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Schema, model, models, Document, Types, Model } from "mongoose";
 
 export interface IDoctorProfile {
@@ -204,6 +206,7 @@ const DoctorSchema = new Schema<IDoctor, IDoctorModel>(
 
 // Virtual for full title
 DoctorSchema.virtual('fullTitle').get(function(this: IDoctor) {
+
   const userName = (this as any).user?.name || 'Doctor';
   return `Dr. ${userName} - ${this.profile.specialization}`;
 });
