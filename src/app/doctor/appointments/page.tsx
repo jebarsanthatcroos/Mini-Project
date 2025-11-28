@@ -26,33 +26,31 @@ export default function DoctorAppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
-    fetchAppointments();
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/doctor/appointments');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch appointments');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          setAppointments(result.data?.appointments || []);
+        } else {
+          throw new Error(result.message || 'Failed to fetch appointments');
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    })();
     fetchStats();
   }, []);
-
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/doctor/appointments');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch appointments');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setAppointments(result.data?.appointments || []);
-      } else {
-        throw new Error(result.message || 'Failed to fetch appointments');
-      }
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   const fetchStats = async () => {
     try {
@@ -71,7 +69,29 @@ export default function DoctorAppointmentsPage() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchAppointments();
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/doctor/appointments');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch appointments');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          setAppointments(result.data?.appointments || []);
+        } else {
+          throw new Error(result.message || 'Failed to fetch appointments');
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    })();
     fetchStats();
   };
 
@@ -91,7 +111,29 @@ export default function DoctorAppointmentsPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchAppointments();
+        (async () => {
+          try {
+            setLoading(true);
+            const response = await fetch('/api/doctor/appointments');
+
+            if (!response.ok) {
+              throw new Error('Failed to fetch appointments');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              setAppointments(result.data?.appointments || []);
+            } else {
+              throw new Error(result.message || 'Failed to fetch appointments');
+            }
+          } catch (error) {
+            console.error('Error fetching appointments:', error);
+          } finally {
+            setLoading(false);
+            setRefreshing(false);
+          }
+        })();
         fetchStats();
       } else {
         alert('Failed to delete appointment: ' + result.message);
