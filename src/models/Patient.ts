@@ -27,6 +27,7 @@ export interface IPatient {
   lastName: string;
   email: string;
   phone: string;
+  nic: string;
   dateOfBirth: Date;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   address?: IAddress;
@@ -45,6 +46,7 @@ export interface IPatientDocument extends IPatient, Document {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  nic: string;
   age: number;
   bmi?: number;
   fullName: string;

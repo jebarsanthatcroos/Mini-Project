@@ -1,4 +1,3 @@
-// app/auth/layout.tsx
 import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import AuthHeader from '@/components/authHeader';

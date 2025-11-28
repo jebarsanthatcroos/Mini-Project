@@ -7,11 +7,11 @@ import { useRouter } from 'next/navigation';
 import { FiPlus, FiRefreshCw } from 'react-icons/fi';
 import Loading from '@/components/Loading';
 import ErrorComponent from '@/components/Error';
-import OrdersStats from './components/OrdersStats';
-import OrdersFilters from './components/OrdersFilters';
-import OrdersTable from './components/OrdersTable';
-import OrderDetailsModal from './components/OrderDetailsModal';
-import { LabTestRequest, Filters } from './types';
+import OrdersStats from '@/components/lab/orders/OrdersStats';
+import OrdersFilters from '@/components/lab/orders/OrdersFilters';
+import OrdersTable from '@/components/lab/orders/OrdersTable';
+import OrderDetailsModal from '@/components/lab/orders/OrderDetailsModal';
+import { LabTestRequest, Filters } from '@/types/lab';
 
 export default function LabOrdersPage() {
   const router = useRouter();
@@ -46,6 +46,7 @@ export default function LabOrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch('/api/lab/lab-test-requests');
 
       if (!response.ok) {
@@ -82,7 +83,7 @@ export default function LabOrdersPage() {
           order.patient.name.toLowerCase().includes(searchLower) ||
           order.test.name.toLowerCase().includes(searchLower) ||
           order.doctor.name.toLowerCase().includes(searchLower) ||
-          order.labTechnician?.name.toLowerCase().includes(searchLower) ||
+          order.labTechnician?.name?.toLowerCase().includes(searchLower) ||
           order.employeeId?.toLowerCase().includes(searchLower)
       );
     }
@@ -174,6 +175,10 @@ export default function LabOrdersPage() {
     }
   };
 
+  const handleEditOrder = (orderId: string) => {
+    router.push(`/lab/orders/${orderId}/edit`);
+  };
+
   if (loading) return <Loading />;
   if (error) return <ErrorComponent message={error} />;
 
@@ -223,7 +228,7 @@ export default function LabOrdersPage() {
           orders={filteredOrders}
           onViewDetails={viewOrderDetails}
           onStatusUpdate={updateOrderStatus}
-          router={router}
+          onEditOrder={handleEditOrder}
         />
       </div>
 
