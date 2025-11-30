@@ -10,6 +10,7 @@ import {
   useSpring,
 } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import NotificationBell from './Notification';
 import Logo from './Logo.static';
 import Image from 'next/image';
 import {
@@ -338,18 +339,7 @@ export default function Navbar() {
                 ref={userMenuRef}
               >
                 {/* Notification Bell */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className='relative p-2 text-gray-600 hover:text-blue-600 transition-colors'
-                >
-                  <FiBell className='h-5 w-5' />
-                  <motion.span
-                    className='absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full'
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                </motion.button>
+                <NotificationBell />
 
                 {/* User Avatar & Menu */}
                 <motion.div className='relative'>

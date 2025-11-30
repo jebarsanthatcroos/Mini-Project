@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
@@ -6,7 +5,11 @@ import User from '@/models/User';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateProfileData } from '@/validation/profile';
 
-export async function GET() {
+// GET /api/profile/[id] - Get user profile
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -17,9 +20,17 @@ export async function GET() {
       );
     }
 
+    // Users can only access their own profile
+    if (session.user.id !== params.id) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     await connectDB();
 
-    const user = await User.findById(session.user.id).select('-password');
+    const user = await User.findById(params.id).select('-password -__v');
 
     if (!user) {
       return NextResponse.json(
@@ -46,8 +57,8 @@ export async function GET() {
         updatedAt: user.updatedAt,
       },
     });
-  } catch (error: any) {
-    console.error('Profile fetch error:', error);
+  } catch (error) {
+    console.error('Error fetching profile:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -55,7 +66,11 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: NextRequest) {
+// PUT /api/profile/[id] - Update user profile
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -66,12 +81,20 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    // Users can only update their own profile
+    if (session.user.id !== params.id) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
 
     await connectDB();
 
     // Get current user to validate against role
-    const currentUser = await User.findById(session.user.id);
+    const currentUser = await User.findById(params.id);
     if (!currentUser) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
@@ -79,7 +102,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate the data using your validation schema
+    // Validate the data
     const validation = validateProfileData(body, currentUser.role);
     if (!validation.success || !validation.data) {
       return NextResponse.json(
@@ -92,7 +115,8 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Update allowed fields
+    // Prepare update data (exclude email as it shouldn't be changed)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {
       name: validation.data.name,
       phone: validation.data.phone || null,
@@ -103,11 +127,12 @@ export async function PUT(req: NextRequest) {
       updatedAt: new Date(),
     };
 
+    // Update user
     const updatedUser = await User.findByIdAndUpdate(
-      session.user.id,
+      params.id,
       { $set: updateData },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select('-password -__v');
 
     if (!updatedUser) {
       return NextResponse.json(
@@ -135,20 +160,14 @@ export async function PUT(req: NextRequest) {
       },
       message: 'Profile updated successfully',
     });
-  } catch (error: any) {
-    console.error('Profile update error:', error);
+  } catch (error) {
+    console.error('Error updating profile:', error);
 
-    if (error.name === 'ValidationError') {
+    // Handle MongoDB validation errors
+    if (error instanceof Error && error.name === 'ValidationError') {
       return NextResponse.json(
-        { success: false, error: 'Validation error', details: error.errors },
+        { success: false, error: 'Validation failed' },
         { status: 400 }
-      );
-    }
-
-    if (error.code === 11000) {
-      return NextResponse.json(
-        { success: false, error: 'Email already exists' },
-        { status: 409 }
       );
     }
 

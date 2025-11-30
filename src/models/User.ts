@@ -15,6 +15,15 @@ export interface IUser {
   bio?: string;
   isActive?: boolean;
   lastLogin?: Date;
+  notificationPreferences?: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    inAppNotifications: boolean;
+    appointmentReminders: boolean;
+    messageAlerts: boolean;
+    systemUpdates: boolean;
+    marketingEmails: boolean;
+  };
 }
 
 export type UserRole =
@@ -120,6 +129,15 @@ const UserSchema = new Schema<IUserDocument>(
     lastLogin: {
       type: Date,
     },
+    notificationPreferences: {
+      emailNotifications: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: true },
+      inAppNotifications: { type: Boolean, default: true },
+      appointmentReminders: { type: Boolean, default: true },
+      messageAlerts: { type: Boolean, default: true },
+      systemUpdates: { type: Boolean, default: true },
+      marketingEmails: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true,
@@ -179,8 +197,7 @@ UserSchema.methods.hasRole = function (
   return this.role === role;
 };
 
-// REMOVED DUPLICATE INDEX: UserSchema.index({ email: 1 });
-// The unique: true on the email field already creates this index
+// Indexes
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ department: 1 });
