@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       'cdn.pixabay.com',
       'source.unsplash.com',
       'avatars.githubusercontent.com',
+      'lh3.googleusercontent.com',
     ],
     remotePatterns: [
       {
@@ -44,6 +45,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'avatars.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
       },
     ],
   },
