@@ -1,47 +1,65 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-
-import { FiAlertCircle } from 'react-icons/fi';
-
-import { Patient, Appointment } from '@/types/patient';
-
+import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { Patient } from '@/types/patient';
 import Loading from '@/components/Loading';
 import ErrorComponent from '@/components/Error';
 
 // Import components
-import PatientHeader from '@/components/Patient/PatientHeader';
-import PatientTabs from '@/components/Patient/PatientTabs';
-import PersonalInfoCard from '@/components/Patient/PersonalInfoCard';
-import EmergencyContactCard from '@/components/Patient/EmergencyContactCard';
-import InsuranceCard from '@/components/Patient/InsuranceCard';
-import AppointmentsTab from '@/components/Patient/AppointmentsTab';
-import AllergiesCard from '@/components/Patient/AllergiesCard';
-import MedicationsCard from '@/components/Patient/MedicationsCard';
-import MedicalHistoryCard from '@/components/Patient/MedicalHistoryCard';
-import QuickActionsCard from '@/components/Patient/QuickActionsCard';
-import PatientMetadataCard from '@/components/Patient/PatientMetadataCard';
+import PatientHeader from '@/components/Patient/layout/PatientHeader';
+import PatientTabs from '@/components/Patient/layout/PatientTabs';
+import PersonalInfoCard from '@/components/Patient/cards/PersonalInfoCard';
+import EmergencyContactCard from '@/components/Patient/cards/EmergencyContactCard';
+import InsuranceCard from '@/components/Patient/cards/InsuranceCard';
+import AppointmentsTab from '@/components/Patient/tabs/AppointmentsTab';
+import AllergiesCard from '@/components/Patient/cards/AllergiesCard';
+import MedicationsCard from '@/components/Patient/cards/MedicationsCard';
+import MedicalHistoryCard from '@/components/Patient/cards/EmergencyContactCard';
+import QuickActionsCard from '@/components/Patient/cards/QuickActionsCard';
+import PatientMetadataCard from '@/components/Patient/cards/PatientMetadataCard';
 
-export default function PatientDetailsPage() {
+type ActiveTab = 'overview' | 'appointments' | 'medical' | 'billing';
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
+
+export default function PatientDetailPage() {
   const router = useRouter();
   const params = useParams();
   const patientId = params.id as string;
 
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'appointments' | 'medical'
-  >('overview');
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (patientId) {
-      fetchPatient();
-      fetchAppointments();
-    }
+    fetchPatient();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   const fetchPatient = async () => {
@@ -49,7 +67,7 @@ export default function PatientDetailsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/doctor/patients/${patientId}`);
+      const response = await fetch(`/api/patients/${patientId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch patient');
@@ -70,23 +88,11 @@ export default function PatientDetailsPage() {
     }
   };
 
-  const fetchAppointments = async () => {
-    try {
-      const response = await fetch(
-        `/api/doctor/patients/${patientId}/appointments`
-      );
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setAppointments(result.data);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-    }
+  const handleEdit = () => {
+    router.push(`/doctor/patients/${patientId}/edit`);
   };
 
-  const handleDeletePatient = async () => {
+  const handleDelete = async () => {
     if (
       !confirm(
         'Are you sure you want to delete this patient? This action cannot be undone.'
@@ -96,7 +102,8 @@ export default function PatientDetailsPage() {
     }
 
     try {
-      const response = await fetch(`/api/doctor/patients/${patientId}`, {
+      setDeleting(true);
+      const response = await fetch(`/api/patients/${patientId}`, {
         method: 'DELETE',
       });
 
@@ -107,103 +114,236 @@ export default function PatientDetailsPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push('/doctor/patients');
+        setSuccess('Patient deleted successfully');
+        setTimeout(() => {
+          router.push('/doctor/patients?success=true');
+        }, 2000);
       } else {
         throw new Error(result.message || 'Failed to delete patient');
       }
     } catch (error) {
       console.error('Error deleting patient:', error);
       setError('Failed to delete patient');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleNewAppointment = () => {
+  const handleCreateAppointment = () => {
     router.push(`/doctor/appointments/new?patientId=${patientId}`);
   };
 
-  const handleEditPatient = () => {
-    router.push(`/doctor/patients/${patientId}/edit`);
-  };
-
-  const handleViewAppointment = (appointmentId: string) => {
-    router.push(`/doctor/appointments/${appointmentId}`);
+  const handleRefresh = () => {
+    fetchPatient();
   };
 
   if (loading) return <Loading />;
-  if (error || !patient)
-    return <ErrorComponent message={error || 'Patient not found'} />;
+  if (error) return <ErrorComponent message={error} />;
+  if (!patient) return <ErrorComponent message='Patient not found' />;
 
   return (
-    <div className='min-h-screen bg-gray-50 py-8'>
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8'>
-        {/* Header */}
+    <motion.div
+      className='min-h-screen bg-gray-50'
+      initial='hidden'
+      animate='visible'
+      variants={containerVariants}
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants}>
         <PatientHeader
           patient={patient}
           onBack={() => router.push('/doctor/patients')}
-          onEdit={handleEditPatient}
-          onDelete={handleDeletePatient}
-          onNewAppointment={handleNewAppointment}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          deleting={deleting}
         />
+      </motion.div>
 
-        {error && (
-          <div className='mb-6 bg-red-50 border border-red-200 rounded-lg p-4'>
+      {/* Success Message */}
+      {success && (
+        <motion.div
+          className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4'
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
+            <div className='flex items-center gap-2 text-green-800'>
+              <FiCheckCircle className='w-5 h-5' />
+              <span className='font-medium'>{success}</span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4'
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
             <div className='flex items-center gap-2 text-red-800'>
               <FiAlertCircle className='w-5 h-5' />
               <span className='font-medium'>Error: {error}</span>
             </div>
+            <button
+              onClick={() => setError(null)}
+              className='mt-2 text-sm text-red-600 hover:text-red-800 underline'
+            >
+              Dismiss
+            </button>
           </div>
+        </motion.div>
+      )}
+
+      {/* Tabs Navigation */}
+      <motion.div
+        className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6'
+        variants={itemVariants}
+      >
+        <PatientTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          patient={patient}
+        />
+      </motion.div>
+
+      {/* Tab Content */}
+      <motion.div
+        className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'
+        variants={itemVariants}
+      >
+        {activeTab === 'overview' && (
+          <motion.div
+            className='grid grid-cols-1 lg:grid-cols-3 gap-6'
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            {/* Left Column */}
+            <div className='lg:col-span-2 space-y-6'>
+              <motion.div variants={itemVariants}>
+                <PersonalInfoCard patient={patient} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <MedicalHistoryCard patient={patient} />
+              </motion.div>
+              <motion.div
+                className='grid grid-cols-1 md:grid-cols-2 gap-6'
+                variants={containerVariants}
+              >
+                <motion.div variants={itemVariants}>
+                  <AllergiesCard patient={patient} />
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <MedicationsCard patient={patient} />
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Right Column */}
+            <div className='space-y-6'>
+              <motion.div variants={itemVariants}>
+                <QuickActionsCard
+                  patient={patient}
+                  onCreateAppointment={handleCreateAppointment}
+                  onEditPatient={handleEdit}
+                  onRefresh={handleRefresh}
+                />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <EmergencyContactCard patient={patient} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <InsuranceCard patient={patient} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <PatientMetadataCard patient={patient} />
+              </motion.div>
+            </div>
+          </motion.div>
         )}
 
-        {/* Tabs */}
-        <PatientTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        {activeTab === 'appointments' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AppointmentsTab patientId={patientId} />
+          </motion.div>
+        )}
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-          {/* Main Content */}
-          <div className='lg:col-span-2 space-y-6'>
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className='space-y-6'>
-                <PersonalInfoCard patient={patient} />
-                <EmergencyContactCard patient={patient} />
-                {patient.insurance && <InsuranceCard patient={patient} />}
-              </div>
-            )}
-
-            {/* Appointments Tab */}
-            {activeTab === 'appointments' && (
-              <AppointmentsTab
-                appointments={appointments}
-                patient={patient}
-                onNewAppointment={handleNewAppointment}
-                onViewAppointment={handleViewAppointment}
-              />
-            )}
-
-            {/* Medical Tab */}
-            {activeTab === 'medical' && (
-              <div className='space-y-6'>
-                <AllergiesCard patient={patient} />
-                <MedicationsCard patient={patient} />
+        {activeTab === 'medical' && (
+          <motion.div
+            className='grid grid-cols-1 lg:grid-cols-3 gap-6'
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            {/* Left Column */}
+            <div className='lg:col-span-2 space-y-6'>
+              <motion.div variants={itemVariants}>
                 <MedicalHistoryCard patient={patient} />
+              </motion.div>
+              <motion.div
+                className='grid grid-cols-1 md:grid-cols-2 gap-6'
+                variants={containerVariants}
+              >
+                <motion.div variants={itemVariants}>
+                  <AllergiesCard patient={patient} />
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <MedicationsCard patient={patient} />
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Right Column */}
+            <div className='space-y-6'>
+              <motion.div variants={itemVariants}>
+                <InsuranceCard patient={patient} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <PatientMetadataCard patient={patient} />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'billing' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
+              <div className='text-center py-12'>
+                <div className='mx-auto h-12 w-12 text-gray-400'>
+                  <svg fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1'
+                    />
+                  </svg>
+                </div>
+                <h3 className='mt-4 text-lg font-medium text-gray-900'>
+                  Billing Information
+                </h3>
+                <p className='mt-2 text-sm text-gray-500'>
+                  Billing features are coming soon. This section will include
+                  insurance claims, payment history, and invoices.
+                </p>
               </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className='space-y-6'>
-            <QuickActionsCard
-              onNewAppointment={handleNewAppointment}
-              onEditPatient={handleEditPatient}
-              onRefresh={fetchPatient}
-            />
-
-            <PatientMetadataCard
-              patient={patient}
-              appointments={appointments}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+    </motion.div>
   );
 }

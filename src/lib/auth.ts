@@ -8,7 +8,6 @@ import bcrypt from 'bcryptjs';
 import mongoose, { Types, Document } from 'mongoose';
 import { AppointmentStatus, ServiceType } from '../models/Appointment';
 import { Priority, TestStatus } from '../models/LabTestRequest';
-import { z } from 'zod';
 
 declare module 'next-auth' {
   interface Session {
@@ -693,7 +692,7 @@ export const authOptions: NextAuthOptions = {
     /**
      * SignIn callback - controls whether user can sign in
      */
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       try {
         // Allow credentials sign in
         if (account?.provider === 'credentials') {
@@ -768,7 +767,7 @@ export const authOptions: NextAuthOptions = {
 
   // Event handlers for logging
   events: {
-    async signIn({ user, account, profile, isNewUser }) {
+    async signIn({ user, account, isNewUser }) {
       console.log(`User signed in: ${user.email} via ${account?.provider}`);
       if (isNewUser) {
         console.log(`New user registered: ${user.email}`);

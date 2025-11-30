@@ -123,3 +123,30 @@ export interface TimeRange {
   value: 'week' | 'month' | 'year';
   label: string;
 }
+
+export interface Appointments {
+  _id: string;
+  id: string;
+  patient: Patient;
+  doctor: Doctor;
+  appointmentDate: string;
+  appointmentTime: string;
+  duration: number;
+  status:
+    | 'scheduled'
+    | 'confirmed'
+    | 'completed'
+    | 'cancelled'
+    | 'no-show'
+    | 'in-progress';
+  type: 'consultation' | 'follow-up' | 'check-up' | 'emergency' | 'other';
+  reason: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  patientId: Patient;
+  doctorId: string;
+  symptoms?: string;
+  diagnosis?: string;
+  prescription?: string;
+}

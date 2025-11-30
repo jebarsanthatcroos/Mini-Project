@@ -3,13 +3,15 @@
 import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { StatsCards } from '@/components/Doctor/StatsCards';
 import { UpcomingAppointments } from '@/components/Doctor/UpcomingAppointments';
 import { QuickActions } from '@/components/Doctor/QuickActions';
 import { RecentActivity } from '@/components/Doctor/RecentActivity';
 import { Button } from '@/components/ui/Button';
 import { UserRole } from '@/models/User';
+import PatientSearch from '@/components/Patient/Search/PatientSearch';
+import { Patient } from '@/types/patient';
 
 interface DoctorStats {
   totalPatients: number;
@@ -37,11 +39,38 @@ interface DoctorSession {
   accessToken?: string;
 }
 
+// Debounce hook for search
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function DoctorDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [stats, setStats] = useState<DoctorStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Patient search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string>('');
+
+  // Debounce search term to avoid too many API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -55,6 +84,14 @@ export default function DoctorDashboard() {
 
     fetchDoctorStats();
   }, [session, status, router]);
+  useEffect(() => {
+    if (debouncedSearchTerm && debouncedSearchTerm.length >= 2) {
+      performSearch(debouncedSearchTerm);
+    } else {
+      setFilteredPatients([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm]);
 
   const fetchDoctorStats = async () => {
     try {
@@ -70,6 +107,81 @@ export default function DoctorDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // API call to search patients
+  const searchPatients = async (query: string): Promise<Patient[]> => {
+    try {
+      console.log('Searching for:', query); // Debug log
+
+      const response = await fetch(
+        `/api/patients/search?q=${encodeURIComponent(query)}&limit=20`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Remove Authorization header if you're using session-based auth
+        }
+      );
+
+      console.log('Search response status:', response.status); // Debug log
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+      console.log('Search results:', data); // Debug log
+
+      return data.patients || [];
+    } catch (error) {
+      console.error('Error searching patients:', error);
+      throw error;
+    }
+  };
+
+  const performSearch = async (query: string) => {
+    setIsSearchLoading(true);
+    setSearchError('');
+
+    try {
+      const patients = await searchPatients(query);
+      setFilteredPatients(patients);
+    } catch (error) {
+      setSearchError(
+        error instanceof Error ? error.message : 'Failed to search patients'
+      );
+      setFilteredPatients([]);
+    } finally {
+      setIsSearchLoading(false);
+    }
+  };
+
+  // Patient search handlers
+  const handleSearchChange = useCallback((term: string) => {
+    setSearchTerm(term);
+
+    if (term.length < 2) {
+      setFilteredPatients([]);
+      setSearchError('');
+    }
+  }, []);
+
+  const handlePatientSelect = (patient: Patient) => {
+    console.log('Selected patient:', patient);
+    // Navigate to patient details
+    router.push(`/doctor/patients/${patient._id}`);
+    setShowPatientDropdown(false);
+    setSearchTerm('');
+  };
+
+  const handleAddNewPatient = () => {
+    router.push('/doctor/patients/new');
+    setShowPatientDropdown(false);
   };
 
   const handleSignOut = async () => {
@@ -143,7 +255,28 @@ export default function DoctorDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Quick Patient Search */}
+      <div className='bg-white rounded-lg shadow-sm p-6'>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4'>
+          Quick Patient Search
+        </h2>
+        <p className='text-sm text-gray-600 mb-4'>
+          Search patients by name, email, NIC, or phone number
+        </p>
+        <PatientSearch
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          onShowDropdown={setShowPatientDropdown}
+          onPatientSelect={handlePatientSelect}
+          filteredPatients={filteredPatients}
+          showPatientDropdown={showPatientDropdown}
+          isLoading={isSearchLoading}
+          error={searchError}
+          onAddNewPatient={handleAddNewPatient}
+        />
+      </div>
+
+      {/* Rest of your dashboard components */}
       {stats && <StatsCards stats={stats} />}
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>

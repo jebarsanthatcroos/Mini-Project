@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -25,7 +26,6 @@ export default function ProtectedRoute({
   const {
     isAuthenticated,
     isLoading,
-    user,
     hasRole,
     canAccess,
     getRoleDisplayName,

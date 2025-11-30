@@ -10,7 +10,7 @@ import {
   FiRefreshCw,
 } from 'react-icons/fi';
 import { Patient } from '@/types/patient';
-import { calculateAge, getGenderText, formatDate } from '@/utils/patientUtils';
+import { calculateAge, formatDate, getGenderText } from '@/types/patient';
 
 interface PatientTableRowProps {
   patient: Patient;

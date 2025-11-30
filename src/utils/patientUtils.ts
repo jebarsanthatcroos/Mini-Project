@@ -1,67 +1,95 @@
-export const calculateAge = (dateOfBirth: string): number => {
-  const birthDate = new Date(dateOfBirth);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+/* eslint-disable no-undef */
+import { useState } from 'react';
+import { PatientFormData } from '@/types/patient';
+import { validatePatientForm, validateField } from '@/validation/patientSchema';
 
-  if (
-    monthDiff < 0 ||
-    (monthDiff === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age--;
-  }
+export const usePatientForm = (initialData: PatientFormData) => {
+  const [formData, setFormData] = useState<PatientFormData>(initialData);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  return age;
-};
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value, type } = e.target;
 
-export const getGenderText = (gender: string): string => {
-  switch (gender) {
-    case 'MALE':
-      return 'Male';
-    case 'FEMALE':
-      return 'Female';
-    case 'OTHER':
-      return 'Other';
-    default:
-      return gender;
-  }
-};
-export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setFormData((prev: any) => ({
+      ...prev,
+      [name]:
+        type === 'number' ? (value ? parseFloat(value) : undefined) : value,
+    }));
 
-export const formatTime = (timeString: string): string => {
-  return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
+    // Clear error for this field
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
 
-export const getAppointmentStatusColor = (status: string): string => {
-  switch (status) {
-    case 'SCHEDULED':
-      return 'bg-blue-100 text-blue-800';
-    case 'CONFIRMED':
-      return 'bg-green-100 text-green-800';
-    case 'IN_PROGRESS':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'COMPLETED':
-      return 'bg-purple-100 text-purple-800';
-    case 'CANCELLED':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
 
-export const getAppointmentStatusText = (status: string): string => {
-  return status
-    .toLowerCase()
-    .replace('_', ' ')
-    .replace(/\b\w/g, l => l.toUpperCase());
+    const result = validateField(name, value);
+    if (!result.valid && result.error) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: result.error!,
+      }));
+    }
+  };
+
+  const handleSubmit = async (
+    onSuccess: (data: PatientFormData) => Promise<void>
+  ) => {
+    setIsSubmitting(true);
+
+    const result = validatePatientForm(formData);
+
+    if (result.success) {
+      try {
+        await onSuccess(result.data as PatientFormData);
+        setFormErrors({});
+        return { success: true };
+      } catch (error) {
+        setFormErrors({ _form: 'Failed to submit form. Please try again.' });
+        return { success: false, error };
+      }
+    } else {
+      setFormErrors(result.errors || {});
+
+      // Scroll to first error
+      const firstErrorField = Object.keys(result.errors || {})[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+
+      return { success: false };
+    }
+  };
+
+  const resetForm = () => {
+    setFormData(initialData);
+    setFormErrors({});
+  };
+
+  return {
+    formData,
+    formErrors,
+    isSubmitting,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    resetForm,
+    setFormData,
+  };
 };
