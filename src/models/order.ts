@@ -1,4 +1,5 @@
-import { Schema, model, models, Document, Types } from 'mongoose';
+// models/Order.ts
+import { Schema, model, models, Document, Types, Model } from 'mongoose';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -39,6 +40,11 @@ export interface IOrderDocument extends IOrder, Document {
   updatedAt: Date;
 }
 
+// Define interface for static methods
+interface IOrderModel extends Model<IOrderDocument> {
+  generateOrderNumber(): Promise<string>;
+}
+
 const OrderItemSchema = new Schema<IOrderItem>({
   product: {
     type: Schema.Types.ObjectId,
@@ -65,7 +71,7 @@ const OrderItemSchema = new Schema<IOrderItem>({
   },
 });
 
-const OrderSchema = new Schema<IOrderDocument>(
+const OrderSchema = new Schema<IOrderDocument, IOrderModel>(
   {
     orderNumber: {
       type: String,
@@ -158,8 +164,7 @@ const OrderSchema = new Schema<IOrderDocument>(
   }
 );
 
-// Indexes for better query performance
-OrderSchema.index({ orderNumber: 1 }, { unique: true });
+// Indexes
 OrderSchema.index({ customer: 1 });
 OrderSchema.index({ pharmacy: 1 });
 OrderSchema.index({ status: 1 });
@@ -167,33 +172,25 @@ OrderSchema.index({ paymentStatus: 1 });
 OrderSchema.index({ createdAt: -1 });
 OrderSchema.index({ 'items.product': 1 });
 
-// Virtual for formatted order status
-OrderSchema.virtual('formattedStatus').get(function (this: IOrderDocument) {
-  const statusMap = {
-    pending: 'Pending',
-    confirmed: 'Confirmed',
-    preparing: 'Preparing',
-    ready: 'Ready for Pickup',
-    out_for_delivery: 'Out for Delivery',
-    delivered: 'Delivered',
-    cancelled: 'Cancelled',
-  };
-  return statusMap[this.status] || this.status;
-});
+// Static method to generate order number
+OrderSchema.statics.generateOrderNumber = async function (): Promise<string> {
+  const today = new Date();
+  const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
 
-// Static method to find orders by status
-OrderSchema.statics.findByStatus = function (status: string) {
-  return this.find({ status }).populate('customer pharmacy items.product');
+  const lastOrder = await this.findOne({
+    orderNumber: new RegExp(`^ORD-${dateString}`),
+  }).sort({ orderNumber: -1 });
+
+  let sequence = 1;
+  if (lastOrder) {
+    const lastSequence = parseInt(lastOrder.orderNumber.split('-')[2]) || 0;
+    sequence = lastSequence + 1;
+  }
+
+  return `ORD-${dateString}-${sequence.toString().padStart(4, '0')}`;
 };
 
-// Middleware to update timestamps
-OrderSchema.pre('save', function (next) {
-  if (this.status === 'delivered' && !this.actualDelivery) {
-    this.actualDelivery = new Date();
-  }
-  next();
-});
-
-const Order = models.Order || model<IOrderDocument>('Order', OrderSchema);
+const Order = (models.Order ||
+  model<IOrderDocument, IOrderModel>('Order', OrderSchema)) as IOrderModel;
 
 export default Order;

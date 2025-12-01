@@ -1,74 +1,241 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import Shop, { IShop } from '@/models/shop';
-import { Types } from 'mongoose';
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message: string;
-  error?: string;
-}
+import shopModel from '@/models/shop';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<Response> {
+) {
   try {
-    await connectDB();
-
-    // Await the params Promise
     const { id } = await params;
 
-    console.log('API Route - Received ID:', id);
+    console.log(`Fetching shop with ID: ${id}`);
 
-    if (!id || id === 'undefined' || id === '[id]') {
-      const errorResponse: ApiResponse<null> = {
-        success: false,
-        message: 'Shop ID is required',
-        error: 'Missing shop ID parameter',
-      };
-      return NextResponse.json(errorResponse, { status: 400 });
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid shop ID format',
+        },
+        { status: 400 }
+      );
     }
 
-    let shopPost: IShop | null;
+    const db = await connectDB();
+    console.log(' Database connection state:', db.connection.readyState);
 
-    // Try to find by MongoDB ObjectId first
-    if (Types.ObjectId.isValid(id)) {
-      shopPost = await Shop.findById(id);
-    } else {
-      // Try to find by custom id field
-      shopPost = await Shop.findOne({ id: id });
-      if (!shopPost) {
-        // Try to find by _id as string
-        shopPost = await Shop.findOne({ _id: id });
-      }
+    const shop = await shopModel.findById(id);
+
+    if (!shop) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Shop not found',
+        },
+        { status: 404 }
+      );
     }
 
-    if (!shopPost) {
-      const errorResponse: ApiResponse<null> = {
-        success: false,
-        message: 'Shop not found',
-        error: 'No shop found with the provided ID',
-      };
-      return NextResponse.json(errorResponse, { status: 404 });
-    }
+    console.log(` Found shop: ${shop.name}`);
 
-    const response: ApiResponse<IShop> = {
+    return NextResponse.json({
       success: true,
-      data: shopPost,
-      message: 'Shop fetched successfully',
-    };
-
-    return NextResponse.json(response, { status: 200 });
+      data: shop,
+    });
   } catch (error) {
-    console.error('Error in shop detail API:', error);
-    const errorResponse: ApiResponse<null> = {
-      success: false,
-      message: 'Failed to fetch shop',
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    };
+    console.error('Error fetching shop:', error);
 
-    return NextResponse.json(errorResponse, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to fetch shop',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    console.log(`Updating shop with ID: ${id}`);
+
+    // Validate MongoDB ObjectId format
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid shop ID format',
+        },
+        { status: 400 }
+      );
+    }
+
+    const db = await connectDB();
+    console.log(' Database connection state:', db.connection.readyState);
+
+    const body = await request.json();
+
+    console.log('Update data:', body);
+
+    const updatedShop = await shopModel.findByIdAndUpdate(id, body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedShop) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Shop not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(`Updated shop: ${updatedShop.name}`);
+
+    return NextResponse.json({
+      success: true,
+      data: updatedShop,
+    });
+  } catch (error) {
+    console.error('Error updating shop:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to update shop',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params; // ✅ Await the params Promise
+
+    console.log(`🗑️ Deleting shop with ID: ${id}`);
+
+    // Validate MongoDB ObjectId format
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid shop ID format',
+        },
+        { status: 400 }
+      );
+    }
+
+    const db = await connectDB();
+    console.log('Database connection state:', db.connection.readyState);
+
+    const deletedShop = await shopModel.findByIdAndDelete(id);
+
+    if (!deletedShop) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Shop not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(` Deleted shop: ${deletedShop.name}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Shop deleted successfully',
+      data: deletedShop,
+    });
+  } catch (error) {
+    console.error(' Error deleting shop:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to delete shop',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Optional: PATCH method for partial updates
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    console.log(`🔧 Partially updating shop with ID: ${id}`);
+
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid shop ID format',
+        },
+        { status: 400 }
+      );
+    }
+
+    const db = await connectDB();
+    console.log('Database connection state:', db.connection.readyState);
+
+    const body = await request.json();
+
+    console.log(' Partial update data:', body);
+
+    const updatedShop = await shopModel.findByIdAndUpdate(
+      id,
+      { $set: body },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedShop) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Shop not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(`Partially updated shop: ${updatedShop.name}`);
+
+    return NextResponse.json({
+      success: true,
+      data: updatedShop,
+    });
+  } catch (error) {
+    console.error(' Error partially updating shop:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to update shop',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }
