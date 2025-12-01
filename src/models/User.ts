@@ -3,6 +3,7 @@ import { Schema, model, models, Document, Types, Model } from 'mongoose';
 export interface IUser {
   name: string;
   email: string;
+  nic: string;
   password?: string;
   role: UserRole;
   image?: string;
@@ -113,6 +114,14 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
         'Please enter a valid email',
       ],
+    },
+    nic: {
+      type: String,
+      required: [true, 'NIC is required'],
+      unique: true,
+      trim: true,
+      uppercase: true,
+      match: [/^([0-9]{9}[VvXx]|[0-9]{12})$/, 'Invalid NIC format'],
     },
     password: {
       type: String,
