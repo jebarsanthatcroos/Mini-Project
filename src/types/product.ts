@@ -1,3 +1,20 @@
+import { z } from 'zod';
+import { productSchema } from '@/validation/product';
+
+export type ProductFormData = z.infer<typeof productSchema>;
+
+export interface Pharmacy {
+  _id: string;
+  name: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+}
+
 export interface Product {
   _id?: string;
   id?: string;

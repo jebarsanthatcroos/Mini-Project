@@ -22,7 +22,10 @@ export default function PharmacistHeader() {
       <div className='flex items-center justify-between px-6 py-4'>
         {/* Left side - Search and navigation */}
         <div className='flex items-center space-x-4'>
-          <button className='lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors'>
+          <button
+            className='lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors'
+            suppressHydrationWarning
+          >
             <FiMenu className='w-5 h-5 text-gray-600' />
           </button>
 
@@ -34,6 +37,7 @@ export default function PharmacistHeader() {
               type='text'
               placeholder='Search patients, medications...'
               className='pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64'
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -45,6 +49,7 @@ export default function PharmacistHeader() {
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
               className='p-2 rounded-lg hover:bg-gray-100 transition-colors relative'
+              suppressHydrationWarning
             >
               <FiBell className='w-5 h-5 text-gray-600' />
               <span className='absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white'></span>
@@ -93,6 +98,7 @@ export default function PharmacistHeader() {
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className='flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors'
+              suppressHydrationWarning
             >
               <div className='w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center'>
                 <span className='text-white text-sm font-medium'>
@@ -129,6 +135,7 @@ export default function PharmacistHeader() {
                   <button
                     onClick={() => signOut()}
                     className='flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-left'
+                    suppressHydrationWarning
                   >
                     <FiLogOut className='w-4 h-4' />
                     <span>Sign Out</span>

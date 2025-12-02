@@ -87,10 +87,8 @@ const PharmacySchema = new Schema<IPharmacyDocument>(
         type: String,
         required: [true, 'ZIP code is required'],
         trim: true,
-        // More flexible ZIP code validation
         validate: {
           validator: function (zip: string) {
-            // Allow various ZIP code formats including international
             return /^[A-Z0-9\-\s]{3,10}$/i.test(zip);
           },
           message: 'Please enter a valid ZIP/postal code',
@@ -100,7 +98,7 @@ const PharmacySchema = new Schema<IPharmacyDocument>(
       country: {
         type: String,
         required: [true, 'Country is required'],
-        default: 'US',
+        default: 'Sri Lanka',
         trim: true,
       },
     },
@@ -227,7 +225,38 @@ const PharmacySchema = new Schema<IPharmacyDocument>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: function (doc, ret) {
+      transform: function (_doc, ret) {
+        // Use destructuring to exclude _id and __v
+        const { _id, __v, ...rest } = ret;
+
+        // Add id field
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result: any = {
+          id: _id.toString(),
+          ...rest,
+        };
+
+        // Ensure createdBy is properly serialized if populated
+        if (
+          result.createdBy &&
+          typeof result.createdBy === 'object' &&
+          result.createdBy._id
+        ) {
+          result.createdBy = {
+            id: result.createdBy._id.toString(),
+            name: result.createdBy.name,
+            email: result.createdBy.email,
+            role: result.createdBy.role,
+          };
+        }
+
+        return result;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (_doc, ret) {
+        // Use destructuring to exclude _id and __v
         const { _id, __v, ...rest } = ret;
         return {
           id: _id.toString(),
@@ -235,11 +264,8 @@ const PharmacySchema = new Schema<IPharmacyDocument>(
         };
       },
     },
-    toObject: { virtuals: true },
   }
 );
-
-// ... rest of your virtuals, methods, and indexes remain the same ...
 
 // Virtual for checking if pharmacy is currently open
 PharmacySchema.virtual('isOpen').get(function (this: IPharmacyDocument) {
@@ -249,14 +275,8 @@ PharmacySchema.virtual('isOpen').get(function (this: IPharmacyDocument) {
     }
 
     const now = new Date();
-    const currentDay = now.toLocaleDateString('en-Sri Lanka', {
+    const currentDay = now.toLocaleDateString('en-US', {
       weekday: 'long',
-    });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const currentTime = now.toLocaleTimeString('en-Sri Lanka', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
     });
 
     const todayHours =

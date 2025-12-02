@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   BiArrowBack,
   BiTrash,
@@ -10,32 +11,20 @@ import {
   BiHome,
   BiBuilding,
   BiCurrentLocation,
+  BiPhone,
+  BiEnvelope,
+  BiUser,
 } from 'react-icons/bi';
 import { motion } from 'framer-motion';
-import Loading from '@/components/Loading';
-import ErrorComponent from '@/components/Error';
 import useCart from '@/context/CartContext';
 import Image from 'next/image';
 
 export default function MyCartPage() {
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-
-  type Address = {
-    pincode: string;
-    area: string;
-    city: string;
-    state: string;
-  };
-
-  const [address, setAddress] = useState<Address>({
-    pincode: '',
-    area: '',
-    city: '',
-    state: '',
-  });
-
   const [error, setError] = useState<string | null>(null);
+
   const {
     cart: cartItems,
     totalPrice,
@@ -45,99 +34,94 @@ export default function MyCartPage() {
     clearCart,
   } = useCart();
 
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${apiUrl}/allproduct`);
+  // Shipping address form
+  const [shippingAddress, setShippingAddress] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    instructions: '',
+  });
 
-        if (!response.ok) throw new Error('Failed to fetch cart');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch cart');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCart();
-  }, []);
-
-  const handleUpdateQuantity = async (
-    productId: string,
-    newQuantity: number
-  ) => {
-    try {
-      setLoading(true);
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/allproduct/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity: newQuantity }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update quantity');
-
-      updateQuantity(productId, newQuantity);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to update quantity'
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    updateQuantity(productId, newQuantity);
   };
 
-  const handleRemoveItem = async (productId: string) => {
-    try {
-      setLoading(true);
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/allproduct/${productId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to remove item');
-
-      removeFromCart(productId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove item');
-    } finally {
-      setLoading(false);
-    }
+  const handleRemoveItem = (productId: string) => {
+    removeFromCart(productId);
   };
 
   const handleCheckout = async () => {
     try {
       setLoading(true);
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/check_out`, {
+      setError(null);
+
+      // Validate form
+      if (!shippingAddress.name.trim()) {
+        throw new Error('Please enter your name');
+      }
+      if (!shippingAddress.email.trim()) {
+        throw new Error('Please enter your email');
+      }
+      if (!shippingAddress.phone.trim()) {
+        throw new Error('Please enter your phone number');
+      }
+      if (!shippingAddress.address.trim()) {
+        throw new Error('Please enter your address');
+      }
+      if (!shippingAddress.city.trim()) {
+        throw new Error('Please enter your city');
+      }
+      if (!shippingAddress.postalCode.trim()) {
+        throw new Error('Please enter your postal code');
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+      const checkoutData = {
+        items: cartItems.map(item => ({
+          _id: item._id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+        })),
+        total: total,
+        paymentMethod: 'cash',
+        shippingAddress: shippingAddress,
+      };
+
+      console.log('Sending checkout data:', checkoutData);
+
+      const response = await fetch(`${apiUrl}/api/check_out`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          items: cartItems,
-          total: totalPrice,
-          address,
-        }),
+        body: JSON.stringify(checkoutData),
       });
 
-      if (!response.ok) throw new Error('Checkout failed');
+      const data = await response.json();
 
-      setCheckoutSuccess(true);
+      if (!response.ok) {
+        throw new Error(data.message || 'Checkout failed');
+      }
+
+      console.log('Checkout response:', data);
+
+      // Clear cart and show success
       clearCart();
-      setAddress({
-        pincode: '',
-        area: '',
-        city: '',
-        state: '',
-      });
+      setCheckoutSuccess(true);
+
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        router.push('/shop/order-placed');
+      }, 3000);
     } catch (err) {
+      console.error('Checkout error:', err);
       setError(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
       setLoading(false);
@@ -147,9 +131,6 @@ export default function MyCartPage() {
   const shipping = cartItems.length > 0 ? 5.99 : 0;
   const tax = totalPrice * 0.08;
   const total = totalPrice + shipping + tax;
-
-  if (loading) return <Loading />;
-  if (error) return <ErrorComponent message={error} />;
 
   if (checkoutSuccess) {
     return (
@@ -163,13 +144,12 @@ export default function MyCartPage() {
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>
             Order Confirmed!
           </h1>
-          <p className='text-gray-600 mb-6'>Thank you for your purchase.</p>
-          <Link
-            href='/shop'
-            className='inline-block px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium'
-          >
-            Continue Shopping
-          </Link>
+          <p className='text-gray-600 mb-6'>
+            Thank you for your purchase. Redirecting...
+          </p>
+          <div className='flex justify-center'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600'></div>
+          </div>
         </motion.div>
       </div>
     );
@@ -191,6 +171,12 @@ export default function MyCartPage() {
           </h1>
         </div>
 
+        {error && (
+          <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4'>
+            {error}
+          </div>
+        )}
+
         {cartItems.length === 0 ? (
           <div className='bg-white rounded-xl shadow-sm p-8 text-center'>
             <BiShoppingBag className='text-gray-400 text-5xl mx-auto mb-4' />
@@ -209,6 +195,7 @@ export default function MyCartPage() {
           </div>
         ) : (
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+            {/* Cart Items */}
             <div className='lg:col-span-2'>
               <div className='bg-white rounded-xl shadow-sm overflow-hidden'>
                 <div className='divide-y divide-gray-200'>
@@ -219,18 +206,19 @@ export default function MyCartPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className='flex items-center gap-6 p-6'
                     >
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        className='w-24 h-24 object-contain rounded-lg'
-                        width={96}
-                        height={96}
-                        unoptimized
-                      />
+                      <div className='relative w-24 h-24'>
+                        <Image
+                          src={item.image || '/placeholder-product.jpg'}
+                          alt={item.name}
+                          fill
+                          className='object-contain rounded-lg'
+                          sizes='96px'
+                        />
+                      </div>
                       <div className='flex-1'>
                         <div className='flex justify-between'>
                           <Link
-                            href={`/products/${item._id}`}
+                            href={`/shop/pharmacy/${item._id}`}
                             className='text-lg font-medium text-gray-900 hover:text-orange-600'
                           >
                             {item.name}
@@ -255,7 +243,7 @@ export default function MyCartPage() {
                                   item.quantity - 1
                                 )
                               }
-                              className='px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              className='px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50'
                               disabled={item.quantity <= 1}
                               aria-label='Decrease quantity'
                             >
@@ -288,12 +276,13 @@ export default function MyCartPage() {
               </div>
             </div>
 
+            {/* Order Summary & Shipping Form */}
             <div>
               <div className='bg-white rounded-xl shadow-sm p-6 sticky top-6'>
                 <h2 className='text-lg font-medium text-gray-900 mb-4'>
                   Order Summary
                 </h2>
-                <div className='space-y-4'>
+                <div className='space-y-4 mb-6'>
                   <div className='flex justify-between'>
                     <span className='text-gray-600'>Subtotal</span>
                     <span className='text-gray-900'>
@@ -320,120 +309,154 @@ export default function MyCartPage() {
                   </div>
                 </div>
 
-                <div className='mb-4 mt-6'>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className='relative'
-                  >
-                    <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
-                      <BiMap />
-                    </span>
+                {/* Shipping Information Form */}
+                <h3 className='text-md font-medium text-gray-900 mb-4'>
+                  Shipping Information
+                </h3>
+                <div className='space-y-3'>
+                  {/* Name */}
+                  <div className='relative'>
+                    <BiUser className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
                     <input
-                      className='pl-10 px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500'
+                      className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full'
                       type='text'
-                      placeholder='Pin code'
+                      placeholder='Full Name *'
+                      value={shippingAddress.name}
                       onChange={e =>
-                        setAddress({ ...address, pincode: e.target.value })
+                        setShippingAddress({
+                          ...shippingAddress,
+                          name: e.target.value,
+                        })
                       }
-                      value={address.pincode}
                     />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.45 }}
-                    className='relative'
-                  >
-                    <span className='absolute left-3 top-4 text-gray-400'>
-                      <BiHome />
-                    </span>
-                    <textarea
-                      className='pl-10 px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500 resize-none'
-                      rows={4}
-                      placeholder='Address (Area and Street)'
-                      onChange={e =>
-                        setAddress({ ...address, area: e.target.value })
-                      }
-                      value={address.area}
-                    ></textarea>
-                  </motion.div>
-                  <div className='flex space-x-3'>
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 }}
-                      className='relative w-1/2'
-                    >
-                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
-                        <BiBuilding />
-                      </span>
-                      <input
-                        className='pl-10 px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500'
-                        type='text'
-                        placeholder='City/District/Town'
-                        onChange={e =>
-                          setAddress({ ...address, city: e.target.value })
-                        }
-                        value={address.city}
-                      />
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.55 }}
-                      className='relative w-1/2'
-                    >
-                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
-                        <BiMap />
-                      </span>
-                      <input
-                        className='pl-10 px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500'
-                        type='text'
-                        placeholder='State'
-                        onChange={e =>
-                          setAddress({ ...address, state: e.target.value })
-                        }
-                        value={address.state}
-                      />
-                    </motion.div>
                   </div>
+
+                  {/* Email */}
+                  <div className='relative'>
+                    <BiEnvelope className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                    <input
+                      className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full'
+                      type='email'
+                      placeholder='Email *'
+                      value={shippingAddress.email}
+                      onChange={e =>
+                        setShippingAddress({
+                          ...shippingAddress,
+                          email: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div className='relative'>
+                    <BiPhone className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                    <input
+                      className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full'
+                      type='tel'
+                      placeholder='Phone Number *'
+                      value={shippingAddress.phone}
+                      onChange={e =>
+                        setShippingAddress({
+                          ...shippingAddress,
+                          phone: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div className='relative'>
+                    <BiHome className='absolute left-3 top-3 text-gray-400' />
+                    <textarea
+                      className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full resize-none'
+                      rows={3}
+                      placeholder='Street Address *'
+                      value={shippingAddress.address}
+                      onChange={e =>
+                        setShippingAddress({
+                          ...shippingAddress,
+                          address: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {/* City & Postal Code */}
+                  <div className='flex gap-3'>
+                    <div className='relative flex-1'>
+                      <BiBuilding className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                      <input
+                        className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full'
+                        type='text'
+                        placeholder='City *'
+                        value={shippingAddress.city}
+                        onChange={e =>
+                          setShippingAddress({
+                            ...shippingAddress,
+                            city: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className='relative flex-1'>
+                      <BiMap className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                      <input
+                        className='pl-10 px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full'
+                        type='text'
+                        placeholder='Postal Code *'
+                        value={shippingAddress.postalCode}
+                        onChange={e =>
+                          setShippingAddress({
+                            ...shippingAddress,
+                            postalCode: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Delivery Instructions */}
+                  <textarea
+                    className='px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-orange-500 transition w-full resize-none'
+                    rows={2}
+                    placeholder='Delivery Instructions (Optional)'
+                    value={shippingAddress.instructions}
+                    onChange={e =>
+                      setShippingAddress({
+                        ...shippingAddress,
+                        instructions: e.target.value,
+                      })
+                    }
+                  />
                 </div>
+
+                {/* Checkout Button */}
                 <motion.button
                   type='button'
                   onClick={handleCheckout}
-                  disabled={
-                    loading ||
-                    cartItems.length === 0 ||
-                    !address.pincode.trim() ||
-                    !address.area.trim() ||
-                    !address.city.trim() ||
-                    !address.state.trim()
-                  }
-                  className={`mt-2 w-full ${
-                    loading ||
-                    cartItems.length === 0 ||
-                    !address.pincode.trim() ||
-                    !address.area.trim() ||
-                    !address.city.trim() ||
-                    !address.state.trim()
+                  disabled={loading || cartItems.length === 0}
+                  className={`mt-6 w-full ${
+                    loading || cartItems.length === 0
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-orange-600 hover:bg-orange-700'
-                  } text-white py-3 px-4 rounded-md transition font-medium`}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
+                  } text-white py-3 px-4 rounded-lg transition font-medium flex items-center justify-center gap-2`}
+                  whileHover={loading ? {} : { scale: 1.02 }}
+                  whileTap={loading ? {} : { scale: 0.98 }}
                 >
-                  {loading ? 'Processing...' : 'Checkout'}
+                  {loading ? (
+                    <>
+                      <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
+                      Processing...
+                    </>
+                  ) : (
+                    'Place Order'
+                  )}
                 </motion.button>
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className='md:mr-16 mt-8 flex justify-center items-center text-orange-600 text-6xl'
-                >
-                  <BiCurrentLocation />
-                </motion.div>
+
+                <div className='mt-6 flex justify-center'>
+                  <BiCurrentLocation className='text-orange-600 text-5xl' />
+                </div>
               </div>
             </div>
           </div>

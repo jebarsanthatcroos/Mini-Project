@@ -90,9 +90,8 @@ export default function ProductReviewPage() {
         throw new Error('Invalid product ID format');
       }
 
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/products/user/${id}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiUrl}/api/products/user/${id}`);
 
       console.log('Response status:', response.status);
 
@@ -143,9 +142,8 @@ export default function ProductReviewPage() {
 
   const fetchRelatedProducts = useCallback(async () => {
     try {
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-      const response = await fetch(`${apiUrl}/products/user/`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiUrl}/api/products/user/`);
 
       if (!response.ok) {
         console.error(`HTTP error! status: ${response.status}`);

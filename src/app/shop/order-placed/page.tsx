@@ -1,38 +1,29 @@
 'use client';
 import { MdCelebration } from 'react-icons/md';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import Loading from '@/components/Loading';
-import Error from '@/components/Error';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const OrderPlaced = () => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/';
-    fetch(`${apiUrl}/orders`)
-      .then(res => res.json())
-      .then(() => {
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching posts:', err);
-        setError('Failed to fetch posts');
-        setLoading(false);
-      });
-  }, []);
+    // Redirect after 5 seconds
+    const timer = setTimeout(() => {
+      router.push('/shop');
+    }, 5000);
 
-  if (loading) return <Loading />;
-  if (error) return <Error message={error} />;
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
-    <div className='h-screen flex flex-col justify-center items-center bg-linear-to-tr from-yellow-50 to-pink-50'>
+    <div className='h-screen flex flex-col justify-center items-center bg-linear-to-br from-yellow-50 to-pink-50'>
       <motion.div
         initial={{ scale: 0.7, opacity: 0 }}
         animate={{ scale: 1, opacity: 1, rotate: [0, 10, -10, 0] }}
         transition={{ duration: 0.8, type: 'spring' }}
-        className='bg-white shadow-xl rounded-3xl p-10 flex flex-col items-center'
+        className='bg-white shadow-xl rounded-3xl p-10 flex flex-col items-center max-w-md'
       >
         <motion.div
           initial={{ y: -40, opacity: 0 }}
@@ -41,6 +32,7 @@ const OrderPlaced = () => {
         >
           <MdCelebration className='text-pink-500 text-7xl mb-4 drop-shadow-lg' />
         </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -49,33 +41,44 @@ const OrderPlaced = () => {
         >
           Order Confirmed!
         </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className='text-lg text-gray-700 mb-6'
+          className='text-lg text-gray-700 mb-6 text-center'
         >
-          We’re celebrating your successful order.
+          We&apos;re celebrating your successful order. You&apos;ll receive a
+          confirmation email shortly.
         </motion.div>
+
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: '100%' }}
-          transition={{ duration: 4, ease: 'easeInOut' }}
-          className='w-full bg-pink-100 rounded-full h-2 mb-3'
+          transition={{ duration: 5, ease: 'easeInOut' }}
+          className='w-full bg-pink-100 rounded-full h-2 mb-6'
         >
           <div
             className='bg-pink-400 h-2 rounded-full'
             style={{ width: '100%' }}
           />
         </motion.div>
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className='text-sm text-gray-500'
+          className='text-sm text-gray-500 mb-4'
         >
-          Redirecting to your orders...
+          Redirecting to shop...
         </motion.p>
+
+        <Link
+          href='/shop'
+          className='mt-4 px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition font-medium'
+        >
+          Continue Shopping
+        </Link>
       </motion.div>
     </div>
   );

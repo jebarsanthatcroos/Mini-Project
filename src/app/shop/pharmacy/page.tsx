@@ -30,10 +30,10 @@ export default function ProductList() {
     const fetchProducts = async () => {
       try {
         const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
         // Try multiple endpoints in case one fails
-        const endpoints = [`${apiUrl}/products/user`, `${apiUrl}/products`];
+        const endpoints = [`${apiUrl}/api/products/user`, `${apiUrl}/products`];
 
         let response = null;
 
