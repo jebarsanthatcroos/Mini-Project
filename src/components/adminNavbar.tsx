@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import {
   FiHome,
   FiUsers,
@@ -48,9 +49,9 @@ export default function AdminNavbar() {
     <>
       {/* Desktop Sidebar */}
       <div className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0'>
-        <div className='flex flex-col flex-grow bg-gray-800 overflow-y-auto'>
+        <div className='flex flex-col grow bg-gray-800 overflow-y-auto'>
           {/* Logo */}
-          <div className='flex items-center justify-center h-16 flex-shrink-0 px-4 bg-gray-900'>
+          <div className='flex items-center justify-center h-16 shrink-0 px-4 bg-gray-900'>
             <Link href='/dashboard/admin' className='flex items-center'>
               <FiShield className='h-8 w-8 text-white' />
               <span className='ml-2 text-white text-xl font-bold'>
@@ -60,7 +61,7 @@ export default function AdminNavbar() {
           </div>
 
           {/* Navigation */}
-          <div className='flex-grow flex flex-col mt-5'>
+          <div className='grow flex flex-col mt-5'>
             <nav className='flex-1 px-2 pb-4 space-y-1'>
               {navigation.map(item => {
                 const Icon = item.icon;
@@ -75,7 +76,7 @@ export default function AdminNavbar() {
                     }`}
                   >
                     <Icon
-                      className={`mr-3 flex-shrink-0 h-6 w-6 ${
+                      className={`mr-3 shrink-0 h-6 w-6 ${
                         isActive(item.href) ? 'text-white' : 'text-gray-400'
                       }`}
                     />
@@ -87,14 +88,16 @@ export default function AdminNavbar() {
           </div>
 
           {/* User Section */}
-          <div className='flex-shrink-0 flex border-t border-gray-700 p-4'>
+          <div className='shrink-0 flex border-t border-gray-700 p-4'>
             <div className='flex items-center'>
-              <div className='flex-shrink-0'>
+              <div className='shrink-0'>
                 {session?.user?.image ? (
-                  <img
-                    className='h-10 w-10 rounded-full'
+                  <Image
                     src={session.user.image}
                     alt={session.user.name || 'Admin'}
+                    sizes='56px'
+                    className='h-10 w-10 rounded-full'
+                    priority
                   />
                 ) : (
                   <div className='h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center'>
@@ -154,7 +157,7 @@ export default function AdminNavbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Icon
-                      className={`mr-3 flex-shrink-0 h-6 w-6 ${
+                      className={`mr-3 shrink-0 h-6 w-6 ${
                         isActive(item.href) ? 'text-white' : 'text-gray-400'
                       }`}
                     />
@@ -167,12 +170,14 @@ export default function AdminNavbar() {
             {/* Mobile User Section */}
             <div className='pt-4 pb-3 border-t border-gray-700'>
               <div className='flex items-center px-4'>
-                <div className='flex-shrink-0'>
+                <div className='shrink-0'>
                   {session?.user?.image ? (
-                    <img
-                      className='h-10 w-10 rounded-full'
+                    <Image
                       src={session.user.image}
                       alt={session.user.name || 'Admin'}
+                      sizes='56px'
+                      className='h-10 w-10 rounded-full'
+                      priority
                     />
                   ) : (
                     <div className='h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center'>

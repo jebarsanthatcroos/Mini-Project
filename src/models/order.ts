@@ -1,4 +1,4 @@
-import { Schema, model, models, Document, Types } from 'mongoose';
+import { Schema, model, models, Document, Types, Model } from 'mongoose';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -6,12 +6,13 @@ export interface IOrderItem {
   price: number;
   prescriptionVerified: boolean;
   verifiedBy?: Types.ObjectId;
+  prescriptionImage?: string;
 }
 
 export interface IOrder {
   orderNumber: string;
-  customer: Types.ObjectId;
-  pharmacy: Types.ObjectId;
+  customer?: Types.ObjectId; // Optional for guest orders
+  pharmacy?: Types.ObjectId; // Optional - extracted from products
   items: IOrderItem[];
   totalAmount: number;
   status:
@@ -25,11 +26,23 @@ export interface IOrder {
   paymentMethod: 'cash' | 'card' | 'insurance';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   deliveryAddress: string;
+  shippingInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    instructions?: string;
+  };
   driver?: Types.ObjectId;
   estimatedDelivery?: Date;
   actualDelivery?: Date;
   notes?: string;
-  createdBy: Types.ObjectId;
+  prescriptionImages?: string[];
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  createdBy?: Types.ObjectId; // Optional for guest orders
   updatedBy?: Types.ObjectId;
 }
 
@@ -37,6 +50,12 @@ export interface IOrderDocument extends IOrder, Document {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface IOrderModel extends Model<IOrderDocument> {
+  generateOrderNumber(): Promise<string>;
+  findByCustomer(customerId: Types.ObjectId): Promise<IOrderDocument[]>;
+  findByPharmacy(pharmacyId: Types.ObjectId): Promise<IOrderDocument[]>;
 }
 
 const OrderItemSchema = new Schema<IOrderItem>({
@@ -63,9 +82,12 @@ const OrderItemSchema = new Schema<IOrderItem>({
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
+  prescriptionImage: {
+    type: String,
+  },
 });
 
-const OrderSchema = new Schema<IOrderDocument>(
+const OrderSchema = new Schema<IOrderDocument, IOrderModel>(
   {
     orderNumber: {
       type: String,
@@ -77,12 +99,12 @@ const OrderSchema = new Schema<IOrderDocument>(
     customer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // ✅ Changed to false for guest orders
     },
     pharmacy: {
       type: Schema.Types.ObjectId,
       ref: 'Pharmacy',
-      required: true,
+      required: false, // ✅ Changed to false - extracted from products
     },
     items: [OrderItemSchema],
     totalAmount: {
@@ -119,6 +141,44 @@ const OrderSchema = new Schema<IOrderDocument>(
       trim: true,
       maxlength: [500, 'Delivery address cannot exceed 500 characters'],
     },
+    shippingInfo: {
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      email: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true,
+      },
+      phone: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      address: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      city: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      postalCode: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      instructions: {
+        type: String,
+        trim: true,
+        maxlength: [500, 'Instructions cannot exceed 500 characters'],
+      },
+    },
     driver: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -134,10 +194,21 @@ const OrderSchema = new Schema<IOrderDocument>(
       trim: true,
       maxlength: [1000, 'Notes cannot exceed 1000 characters'],
     },
+    prescriptionImages: [
+      {
+        type: String,
+      },
+    ],
+    stripeSessionId: {
+      type: String,
+    },
+    stripePaymentIntentId: {
+      type: String,
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // ✅ Changed to false for guest orders
     },
     updatedBy: {
       type: Schema.Types.ObjectId,
@@ -154,46 +225,99 @@ const OrderSchema = new Schema<IOrderDocument>(
           ...rest,
         };
       },
+      virtuals: true,
     },
+    toObject: { virtuals: true },
   }
 );
 
-// Indexes for better query performance
-OrderSchema.index({ orderNumber: 1 }, { unique: true });
-OrderSchema.index({ customer: 1 });
-OrderSchema.index({ pharmacy: 1 });
-OrderSchema.index({ status: 1 });
-OrderSchema.index({ paymentStatus: 1 });
-OrderSchema.index({ createdAt: -1 });
-OrderSchema.index({ 'items.product': 1 });
-
-// Virtual for formatted order status
-OrderSchema.virtual('formattedStatus').get(function (this: IOrderDocument) {
-  const statusMap = {
-    pending: 'Pending',
-    confirmed: 'Confirmed',
-    preparing: 'Preparing',
-    ready: 'Ready for Pickup',
-    out_for_delivery: 'Out for Delivery',
-    delivered: 'Delivered',
-    cancelled: 'Cancelled',
-  };
-  return statusMap[this.status] || this.status;
+// Virtual for formatted delivery address
+OrderSchema.virtual('formattedAddress').get(function () {
+  return `${this.shippingInfo.address}, ${this.shippingInfo.city} ${this.shippingInfo.postalCode}`;
 });
 
-// Static method to find orders by status
-OrderSchema.statics.findByStatus = function (status: string) {
-  return this.find({ status }).populate('customer pharmacy items.product');
+// Indexes
+OrderSchema.index({ customer: 1, createdAt: -1 });
+OrderSchema.index({ pharmacy: 1, status: 1 });
+OrderSchema.index({ status: 1 });
+OrderSchema.index({ paymentStatus: 1 });
+OrderSchema.index({ 'shippingInfo.email': 1 });
+OrderSchema.index({ 'shippingInfo.phone': 1 });
+OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ 'items.product': 1 });
+OrderSchema.index({ stripeSessionId: 1 }, { unique: true, sparse: true });
+OrderSchema.index({ stripePaymentIntentId: 1 }, { unique: true, sparse: true });
+
+// Static Methods
+OrderSchema.statics.generateOrderNumber = async function (): Promise<string> {
+  const today = new Date();
+  const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
+
+  const lastOrder = await this.findOne({
+    orderNumber: new RegExp(`^ORD-${dateString}`),
+  }).sort({ orderNumber: -1 });
+
+  let sequence = 1;
+  if (lastOrder) {
+    const lastSequence = parseInt(lastOrder.orderNumber.split('-')[2]) || 0;
+    sequence = lastSequence + 1;
+  }
+
+  return `ORD-${dateString}-${sequence.toString().padStart(4, '0')}`;
 };
 
-// Middleware to update timestamps
+OrderSchema.statics.findByCustomer = function (
+  customerId: Types.ObjectId
+): Promise<IOrderDocument[]> {
+  return this.find({ customer: customerId })
+    .populate('pharmacy', 'name address phone')
+    .populate('items.product', 'name image')
+    .sort({ createdAt: -1 })
+    .exec();
+};
+
+OrderSchema.statics.findByPharmacy = function (
+  pharmacyId: Types.ObjectId
+): Promise<IOrderDocument[]> {
+  return this.find({ pharmacy: pharmacyId })
+    .populate('customer', 'name email phone')
+    .populate('items.product', 'name')
+    .sort({ createdAt: -1 })
+    .exec();
+};
+
+// Instance Methods
+OrderSchema.methods.updateStatus = async function (
+  status: IOrder['status'],
+  updatedBy?: Types.ObjectId
+): Promise<IOrderDocument> {
+  this.status = status;
+  if (updatedBy) {
+    this.updatedBy = updatedBy;
+  }
+  return this.save();
+};
+
+OrderSchema.methods.updatePaymentStatus = async function (
+  paymentStatus: IOrder['paymentStatus'],
+  stripeData?: { sessionId?: string; paymentIntentId?: string }
+): Promise<IOrderDocument> {
+  this.paymentStatus = paymentStatus;
+  if (stripeData?.sessionId) this.stripeSessionId = stripeData.sessionId;
+  if (stripeData?.paymentIntentId)
+    this.stripePaymentIntentId = stripeData.paymentIntentId;
+  return this.save();
+};
+
+// Pre-save middleware
 OrderSchema.pre('save', function (next) {
-  if (this.status === 'delivered' && !this.actualDelivery) {
+  if (this.isModified('status') && this.status === 'delivered') {
     this.actualDelivery = new Date();
   }
   next();
 });
 
-const Order = models.Order || model<IOrderDocument>('Order', OrderSchema);
+const Order = (models.Order ||
+  model<IOrderDocument, IOrderModel>('Order', OrderSchema)) as IOrderModel;
 
 export default Order;

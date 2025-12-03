@@ -3,7 +3,6 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { FaRocket } from 'react-icons/fa';
 import Link from 'next/link';
 
 interface LogoProps {
@@ -26,13 +25,16 @@ const Logo = ({ size = 'md', showImage = true, className = '' }: LogoProps) => {
   };
 
   return (
-    <Link href='/' className='inline-block'>
+    <Link
+      href='/'
+      className={`flex items-center space-x-3 hover:opacity-80 transition-opacity ${className}`}
+    >
       <motion.div
-        className={`flex items-center space-x-3 ${className}`}
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
         whileHover={{ scale: 1.05 }}
+        className='flex items-center space-x-3'
       >
         {/* Text with gradient */}
         <motion.h1
@@ -40,12 +42,6 @@ const Logo = ({ size = 'md', showImage = true, className = '' }: LogoProps) => {
           whileHover={{ scale: 1.1 }}
           transition={{ type: 'spring', stiffness: 300 }}
         >
-          <motion.div
-            whileHover={{ rotate: 180, scale: 1.2 }}
-            transition={{ duration: 0.5 }}
-          >
-            <FaRocket className='text-yellow-500 mr-2' />
-          </motion.div>
           jebarsanthatcroos
         </motion.h1>
 

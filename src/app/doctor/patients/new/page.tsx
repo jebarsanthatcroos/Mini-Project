@@ -1,173 +1,187 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import {
-  FiArrowLeft,
-  FiSave,
-  FiUser,
-  FiCalendar,
-  FiFileText,
-  FiAlertCircle,
-  FiSearch,
-} from 'react-icons/fi';
-import Loading from '@/components/Loading';
-import ErrorComponent from '@/components/Error';
+import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { PatientFormData } from '@/types/patient';
+import NewPatientHeader from '@/components/Patient/NewPatientHeader';
+import PatientBasicInfoForm from '@/components/Patient/forms/PatientBasicInfoForm';
+import PatientAddressForm from '@/components/Patient/forms/AddressForm';
+import PatientEmergencyContactForm from '@/components/Patient/forms/EmergencyContactForm';
+import PatientMedicalInfoForm from '@/components/Patient/forms/PatientMedicalInfoForm';
+import PatientInsuranceForm from '@/components/Patient/forms/PatientInsuranceForm';
+import PatientFormActions from '@/components/Patient/forms/PatientFormActions';
+import PatientFormSummary from '@/components/Patient/forms/PatientFormSummary';
+import { validatePatientForm, validateField } from '@/validation/patientSchema';
 
-interface Patient {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: string;
-}
+const initialFormData: PatientFormData = {
+  firstName: '',
+  lastName: '',
+  nic: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
+  gender: 'OTHER',
+  address: {
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+  },
+  emergencyContact: {
+    name: '',
+    phone: '',
+    relationship: '',
+    email: '',
+  },
+  medicalHistory: '',
+  allergies: [],
+  medications: [],
+  insurance: {
+    provider: '',
+    policyNumber: '',
+    groupNumber: '',
+    validUntil: new Date(),
+  },
+  bloodType: '',
+  height: undefined,
+  weight: undefined,
+  isActive: true,
+};
+type FormBlurEvent = React.FocusEvent<
+  HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+>;
 
-interface AppointmentFormData {
-  patientId: string;
-  appointmentDate: string;
-  appointmentTime: string;
-  duration: number;
-  type: 'CONSULTATION' | 'FOLLOW_UP' | 'CHECKUP' | 'EMERGENCY' | 'OTHER';
-  status: 'SCHEDULED' | 'CONFIRMED';
-  reason: string;
-  symptoms?: string;
-}
-
-export default function NewAppointmentPage() {
+export default function NewPatientPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<AppointmentFormData>({
-    patientId: '',
-    appointmentDate: '',
-    appointmentTime: '',
-    duration: 30,
-    type: 'CONSULTATION',
-    status: 'SCHEDULED',
-    reason: '',
-    symptoms: '',
-  });
-
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<PatientFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [activeSection, setActiveSection] = useState('basic');
 
-  useEffect(() => {
-    fetchPatients();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = patients.filter(
-        patient =>
-          `${patient.firstName} ${patient.lastName}`
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          patient.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredPatients(filtered);
-    } else {
-      setFilteredPatients(patients);
-    }
-  }, [searchTerm, patients]);
-
-  const fetchPatients = async () => {
+  const checkExistingPatient = async (
+    email: string,
+    nic: string
+  ): Promise<{ exists: boolean; field?: string }> => {
     try {
-      setLoading(true);
-      const response = await fetch('/api/patients');
-
+      const response = await fetch(
+        `/api/patients/check?email=${encodeURIComponent(email)}&nic=${encodeURIComponent(nic)}`
+      );
       if (!response.ok) {
-        throw new Error('Failed to fetch patients');
+        throw new Error('Failed to check patient existence');
       }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setPatients(result.data);
-        setFilteredPatients(result.data);
-      } else {
-        throw new Error(result.message || 'Failed to fetch patients');
-      }
+      return await response.json();
     } catch (error) {
-      console.error('Error fetching patients:', error);
-      setError('Failed to load patients');
-    } finally {
-      setLoading(false);
+      console.error('Error checking patient:', error);
+      return { exists: false };
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.patientId) {
-      errors.patientId = 'Please select a patient';
-    }
-
-    if (!formData.appointmentDate) {
-      errors.appointmentDate = 'Appointment date is required';
-    } else {
-      const selectedDate = new Date(formData.appointmentDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        errors.appointmentDate = 'Appointment date cannot be in the past';
-      }
-    }
-
-    if (!formData.appointmentTime) {
-      errors.appointmentTime = 'Appointment time is required';
-    }
-
-    if (!formData.reason.trim()) {
-      errors.reason = 'Reason for visit is required';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  // ✅ Ensure data has required address field
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ensureValidFormData = (data: any): PatientFormData => {
+    return {
+      ...data,
+      address: data.address || {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+      },
+      emergencyContact: data.emergencyContact || {
+        name: '',
+        phone: '',
+        relationship: '',
+        email: '',
+      },
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationResult = validatePatientForm(formData);
 
-    if (!validateForm()) {
+    if (!validationResult.success) {
+      const errors = validationResult.errors || {};
+      setFormErrors(errors);
+      setError('Please fix the form errors before submitting.');
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        const element = document.getElementById(firstErrorField);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.focus();
+        }
+      }
+      return;
+    }
+
+    const checkResult = await checkExistingPatient(
+      formData.email,
+      formData.nic
+    );
+    if (checkResult.exists) {
+      setError(
+        `${checkResult.field} already exists! Please use a different ${checkResult.field?.toLowerCase()}.`
+      );
+      setFormErrors(prev => ({
+        ...prev,
+        [checkResult.field?.toLowerCase() === 'email' ? 'email' : 'nic']:
+          `${checkResult.field} already exists`,
+      }));
       return;
     }
 
     setSaving(true);
     setError(null);
+    setSuccess(null);
 
     try {
-      const response = await fetch('/api/doctor/appointments', {
+      // ✅ Ensure the data has required fields before sending
+      const validatedData = ensureValidFormData(validationResult.data);
+
+      console.log('Sending data to API:', validatedData);
+      const response = await fetch('/api/patients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(validatedData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create appointment');
+        if (errorData.field) {
+          setFormErrors(prev => ({
+            ...prev,
+            [errorData.field]: errorData.message,
+          }));
+          setError(`Patient with this ${errorData.field} already exists.`);
+        } else {
+          throw new Error(errorData.message || 'Failed to create patient');
+        }
+        return;
       }
 
       const result = await response.json();
 
-      if (result.success) {
-        router.push('/doctor/appointments');
+      if (result.success || result.patient) {
+        setSuccess('Patient created successfully!');
+        setFormErrors({});
+        setTimeout(() => {
+          router.push('/doctor/patients?success=true');
+        }, 2000);
       } else {
-        throw new Error(result.message || 'Failed to create appointment');
+        throw new Error(result.message || 'Failed to create patient');
       }
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      console.error('Error creating patient:', error);
       setError(
-        error instanceof Error ? error.message : 'Failed to create appointment'
+        error instanceof Error ? error.message : 'Failed to create patient'
       );
     } finally {
       setSaving(false);
@@ -179,533 +193,364 @@ export default function NewAppointmentPage() {
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    const { name, value, type } = e.target;
 
-    // Clear error when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
+    // Handle number inputs
+    if (type === 'number') {
+      const numValue = value === '' ? undefined : Number(value);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setFormData((prev: any) => ({
         ...prev,
-        [name]: '',
+        [name]: numValue,
+      }));
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setFormData((prev: any) => ({
+        ...prev,
+        [name]: value,
       }));
     }
+
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const handlePatientSelect = (patient: Patient) => {
-    setFormData(prev => ({
-      ...prev,
-      patientId: patient._id,
-    }));
-    setSearchTerm(`${patient.firstName} ${patient.lastName}`);
-    setShowPatientDropdown(false);
-  };
+  // ✅ Updated to handle all input types including textarea
+  const handleBlur = (e: FormBlurEvent) => {
+    const { name, value } = e.target;
 
-  const getSelectedPatient = () => {
-    return patients.find(patient => patient._id === formData.patientId);
-  };
-
-  const calculateAge = (dateOfBirth: string) => {
-    const birthDate = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
+    // Skip validation for empty optional fields
+    if (!value && !['gender', 'email', 'nic', 'phone'].includes(name)) {
+      return;
     }
 
-    return age;
+    // Validate individual field
+    const result = validateField(name, value);
+    if (!result.valid && result.error) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: result.error!,
+      }));
+    } else {
+      // Clear error if field is now valid
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+  const handleNestedChange = (
+    section: 'address' | 'emergencyContact' | 'insurance',
+    field: string,
+    value: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value,
+      },
+    }));
+
+    // Clear nested field errors
+    const errorKey = `${section}.${field}`;
+    if (formErrors[errorKey] || formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getDefaultTime = () => {
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+  const handleInsuranceDateChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      insurance: {
+        ...prev.insurance,
+        validUntil: new Date(value),
+      },
+    }));
+
+    // Clear insurance date errors
+    if (formErrors['insurance.validUntil']) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors['insurance.validUntil'];
+        return newErrors;
+      });
+    }
   };
 
-  if (loading) return <Loading />;
-  if (error) return <ErrorComponent message={error} />;
+  const handleArrayChange = (
+    field: 'allergies' | 'medications',
+    value: string[]
+  ) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setFormData((prev: any) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // Clear array field errors
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleCancel = () => {
+    if (
+      window.confirm(
+        'Are you sure you want to cancel? Any unsaved changes will be lost.'
+      )
+    ) {
+      router.push('/doctor/patients');
+    }
+  };
+
+  const sections = [
+    { id: 'basic', label: 'Basic Info' },
+    { id: 'address', label: 'Address' },
+    { id: 'emergency', label: 'Emergency Contact' },
+    { id: 'medical', label: 'Medical Info' },
+    { id: 'insurance', label: 'Insurance' },
+  ];
+
+  const getSectionErrors = (sectionId: string): number => {
+    const sectionFields: Record<string, string[]> = {
+      basic: [
+        'firstName',
+        'lastName',
+        'nic',
+        'email',
+        'phone',
+        'dateOfBirth',
+        'gender',
+      ],
+      address: [
+        'address.street',
+        'address.city',
+        'address.state',
+        'address.zipCode',
+        'address.country',
+      ],
+      emergency: [
+        'emergencyContact.name',
+        'emergencyContact.phone',
+        'emergencyContact.relationship',
+        'emergencyContact.email',
+      ],
+      medical: [
+        'medicalHistory',
+        'allergies',
+        'medications',
+        'bloodType',
+        'height',
+        'weight',
+      ],
+      insurance: [
+        'insurance.provider',
+        'insurance.policyNumber',
+        'insurance.groupNumber',
+        'insurance.validUntil',
+      ],
+    };
+
+    const fields = sectionFields[sectionId] || [];
+    return fields.filter(field => {
+      return (
+        formErrors[field] ||
+        formErrors[field.split('.').pop() || ''] ||
+        formErrors[field.replace('.', '_')]
+      );
+    }).length;
+  };
+
+  const hasErrors = Object.keys(formErrors).length > 0;
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
-      <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8'>
-        {/* Header */}
-        <div className='mb-8'>
-          <button
-            onClick={() => router.push('/doctor/appointments')}
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
-          >
-            <FiArrowLeft className='w-5 h-5' />
-            Back to Appointments
-          </button>
+      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8'>
+        <NewPatientHeader onBack={() => router.push('/doctor/patients')} />
 
-          <div className='flex justify-between items-start'>
-            <div>
-              <h1 className='text-3xl font-bold text-gray-900'>
-                New Appointment
-              </h1>
-              <p className='text-gray-600 mt-2'>
-                Schedule a new appointment with a patient
-              </p>
+        {/* Success Message */}
+        {success && (
+          <div className='mb-6 bg-green-50 border border-green-200 rounded-lg p-4'>
+            <div className='flex items-center gap-2 text-green-800'>
+              <FiCheckCircle className='w-5 h-5' />
+              <span className='font-medium'>{success}</span>
             </div>
           </div>
-        </div>
+        )}
 
+        {/* Error Message */}
         {error && (
           <div className='mb-6 bg-red-50 border border-red-200 rounded-lg p-4'>
             <div className='flex items-center gap-2 text-red-800'>
               <FiAlertCircle className='w-5 h-5' />
               <span className='font-medium'>Error: {error}</span>
             </div>
+            {Object.keys(formErrors).length > 0 && (
+              <div className='mt-2 text-sm text-red-700'>
+                Found {Object.keys(formErrors).length} validation error(s).
+                Please check all fields.
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setError(null);
+                setFormErrors({});
+              }}
+              className='mt-2 text-sm text-red-600 hover:text-red-800 underline'
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-            {/* Main Form */}
-            <div className='lg:col-span-2 space-y-6'>
-              {/* Patient Selection */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiUser className='w-5 h-5 text-blue-600' />
-                  Patient Information
-                </h2>
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-8'>
+            {/* Sidebar Navigation */}
+            <div className='lg:col-span-1'>
+              <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
+                <h3 className='text-lg font-medium text-gray-900 mb-4'>
+                  Patient Details
+                </h3>
+                <nav className='space-y-2'>
+                  {sections.map(section => {
+                    const errorCount = getSectionErrors(section.id);
+                    return (
+                      <button
+                        key={section.id}
+                        type='button'
+                        onClick={() => setActiveSection(section.id)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                          activeSection === section.id
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className='flex items-center justify-between'>
+                          <span>{section.label}</span>
+                          {errorCount > 0 && (
+                            <span className='inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full'>
+                              {errorCount}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
 
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Select Patient *
-                    </label>
-                    <div className='relative'>
-                      <div className='relative'>
-                        <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
-                        <input
-                          type='text'
-                          placeholder='Search patients by name or email...'
-                          value={searchTerm}
-                          onChange={e => {
-                            setSearchTerm(e.target.value);
-                            setShowPatientDropdown(true);
-                          }}
-                          onFocus={() => setShowPatientDropdown(true)}
-                          className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                        />
-                      </div>
+                <PatientFormSummary formData={formData} />
 
-                      {showPatientDropdown && filteredPatients.length > 0 && (
-                        <div className='absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto'>
-                          {filteredPatients.map(patient => (
-                            <div
-                              key={patient._id}
-                              onClick={() => handlePatientSelect(patient)}
-                              className='px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0'
-                            >
-                              <div className='font-medium text-gray-900'>
-                                {patient.firstName} {patient.lastName}
-                              </div>
-                              <div className='text-sm text-gray-500'>
-                                {patient.email} •{' '}
-                                {calculateAge(patient.dateOfBirth)} years •{' '}
-                                {patient.gender.toLowerCase()}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                {/* Form Status */}
+                <div className='mt-4 p-3 bg-gray-50 rounded-md'>
+                  <div className='text-sm text-gray-600'>
+                    <div>
+                      Fields with errors: {Object.keys(formErrors).length}
                     </div>
-                    {formErrors.patientId && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.patientId}
-                      </p>
-                    )}
-                  </div>
-
-                  {formData.patientId && (
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-                      <h3 className='font-medium text-blue-900 mb-2'>
-                        Selected Patient
-                      </h3>
-                      <div className='grid grid-cols-2 gap-4 text-sm'>
-                        <div>
-                          <span className='text-blue-700'>Name:</span>
-                          <p className='text-blue-900 font-medium'>
-                            {getSelectedPatient()?.firstName}{' '}
-                            {getSelectedPatient()?.lastName}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Email:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient()?.email}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Phone:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient()?.phone}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Age:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient() &&
-                              calculateAge(
-                                getSelectedPatient()!.dateOfBirth
-                              )}{' '}
-                            years
-                          </p>
-                        </div>
-                      </div>
+                    <div className='mt-1 text-xs'>
+                      {hasErrors && 'Please fix all errors before submitting'}
                     </div>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Appointment Details */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiCalendar className='w-5 h-5 text-green-600' />
-                  Appointment Details
-                </h2>
-
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Date *
-                    </label>
-                    <input
-                      type='date'
-                      name='appointmentDate'
-                      value={formData.appointmentDate}
-                      onChange={handleChange}
-                      min={getMinDate()}
-                      required
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.appointmentDate
-                          ? 'border-red-300'
-                          : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.appointmentDate && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.appointmentDate}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Time *
-                    </label>
-                    <input
-                      type='time'
-                      name='appointmentTime'
-                      value={formData.appointmentTime}
-                      onChange={handleChange}
-                      required
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.appointmentTime
-                          ? 'border-red-300'
-                          : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.appointmentTime && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.appointmentTime}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Duration *
-                    </label>
-                    <select
-                      name='duration'
-                      value={formData.duration}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    >
-                      <option value={15}>15 minutes</option>
-                      <option value={30}>30 minutes</option>
-                      <option value={45}>45 minutes</option>
-                      <option value={60}>60 minutes</option>
-                      <option value={90}>90 minutes</option>
-                      <option value={120}>120 minutes</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Appointment Type *
-                    </label>
-                    <select
-                      name='type'
-                      value={formData.type}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    >
-                      <option value='CONSULTATION'>Consultation</option>
-                      <option value='FOLLOW_UP'>Follow-up</option>
-                      <option value='CHECKUP'>Checkup</option>
-                      <option value='EMERGENCY'>Emergency</option>
-                      <option value='OTHER'>Other</option>
-                    </select>
-                  </div>
-
-                  <div className='md:col-span-2'>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Initial Status
-                    </label>
-                    <select
-                      name='status'
-                      value={formData.status}
-                      onChange={handleChange}
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    >
-                      <option value='SCHEDULED'>Scheduled</option>
-                      <option value='CONFIRMED'>Confirmed</option>
-                    </select>
-                    <p className='mt-1 text-sm text-gray-500'>
-                      Scheduled appointments will need to be confirmed later.
-                      Confirmed appointments are ready for the patient.
-                    </p>
                   </div>
                 </div>
-              </motion.div>
-
-              {/* Medical Information */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiFileText className='w-5 h-5 text-purple-600' />
-                  Medical Information
-                </h2>
-
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Reason for Visit *
-                    </label>
-                    <textarea
-                      name='reason'
-                      value={formData.reason}
-                      onChange={handleChange}
-                      required
-                      rows={4}
-                      placeholder='Describe the primary reason for this appointment...'
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.reason ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.reason && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.reason}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Symptoms (Optional)
-                    </label>
-                    <textarea
-                      name='symptoms'
-                      value={formData.symptoms}
-                      onChange={handleChange}
-                      rows={3}
-                      placeholder='List any symptoms reported by the patient...'
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    />
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             </div>
 
-            {/* Sidebar */}
-            <div className='space-y-6'>
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-lg font-semibold text-gray-900 mb-4'>
-                  Appointment Summary
-                </h2>
-
-                <div className='space-y-3 text-sm'>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-500'>Status:</span>
-                    <span
-                      className={`font-medium ${
-                        formData.status === 'CONFIRMED'
-                          ? 'text-green-600'
-                          : 'text-blue-600'
-                      }`}
-                    >
-                      {formData.status === 'CONFIRMED'
-                        ? 'Confirmed'
-                        : 'Scheduled'}
-                    </span>
-                  </div>
-
-                  <div className='flex justify-between'>
-                    <span className='text-gray-500'>Duration:</span>
-                    <span className='font-medium'>
-                      {formData.duration} minutes
-                    </span>
-                  </div>
-
-                  <div className='flex justify-between'>
-                    <span className='text-gray-500'>Type:</span>
-                    <span className='font-medium capitalize'>
-                      {formData.type.toLowerCase().replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  {formData.appointmentDate && (
-                    <div className='flex justify-between'>
-                      <span className='text-gray-500'>Date:</span>
-                      <span className='font-medium'>
-                        {new Date(formData.appointmentDate).toLocaleDateString(
-                          'en-US',
-                          {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {formData.appointmentTime && (
-                    <div className='flex justify-between'>
-                      <span className='text-gray-500'>Time:</span>
-                      <span className='font-medium'>
-                        {new Date(
-                          `2000-01-01T${formData.appointmentTime}`
-                        ).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                      </span>
-                    </div>
-                  )}
-
-                  {formData.patientId && (
-                    <div className='pt-3 border-t border-gray-200'>
-                      <div className='flex justify-between'>
-                        <span className='text-gray-500'>Patient:</span>
-                        <span className='font-medium text-right'>
-                          {getSelectedPatient()?.firstName}{' '}
-                          {getSelectedPatient()?.lastName}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <div className='space-y-3'>
-                  <button
-                    type='submit'
-                    disabled={saving}
-                    className='w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors'
-                  >
-                    <FiSave className='w-4 h-4' />
-                    {saving ? 'Creating Appointment...' : 'Create Appointment'}
-                  </button>
-
-                  <button
-                    type='button'
-                    onClick={() => router.push('/doctor/appointments')}
-                    className='w-full px-4 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className='mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
-                  <p className='text-xs text-yellow-800'>
-                    <strong>Note:</strong> The patient will receive a
-                    notification about this appointment once created.
+            {/* Main Form Content */}
+            <div className='lg:col-span-3'>
+              <div className='bg-white rounded-lg shadow-sm border border-gray-200'>
+                <div className='p-6 border-b border-gray-200'>
+                  <h2 className='text-xl font-semibold text-gray-900'>
+                    {sections.find(s => s.id === activeSection)?.label}
+                  </h2>
+                  <p className='text-gray-600 mt-1'>
+                    Fill in the patient&apos;s {activeSection.replace('-', ' ')}{' '}
+                    information
                   </p>
                 </div>
-              </motion.div>
 
-              {/* Help Tips */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className='bg-blue-50 border border-blue-200 rounded-xl p-6'
-              >
-                <h3 className='font-semibold text-blue-900 mb-3'>Quick Tips</h3>
-                <ul className='space-y-2 text-sm text-blue-800'>
-                  <li className='flex items-start gap-2'>
-                    <span className='mt-0.5'>•</span>
-                    <span>Select a patient from your existing records</span>
-                  </li>
-                  <li className='flex items-start gap-2'>
-                    <span className='mt-0.5'>•</span>
-                    <span>
-                      Choose appropriate duration based on appointment type
-                    </span>
-                  </li>
-                  <li className='flex items-start gap-2'>
-                    <span className='mt-0.5'>•</span>
-                    <span>
-                      Mark as confirmed if the patient has already confirmed
-                    </span>
-                  </li>
-                  <li className='flex items-start gap-2'>
-                    <span className='mt-0.5'>•</span>
-                    <span>
-                      Provide clear reason for better patient preparation
-                    </span>
-                  </li>
-                </ul>
-              </motion.div>
+                <div className='p-6'>
+                  {activeSection === 'basic' && (
+                    <PatientBasicInfoForm
+                      formData={formData}
+                      formErrors={formErrors}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  )}
+
+                  {activeSection === 'address' && (
+                    <PatientAddressForm
+                      formData={formData}
+                      formErrors={formErrors}
+                      onChange={(field, value) =>
+                        handleNestedChange('address', field, value)
+                      }
+                      onBlur={handleBlur}
+                    />
+                  )}
+
+                  {activeSection === 'emergency' && (
+                    <PatientEmergencyContactForm
+                      formData={formData}
+                      formErrors={formErrors}
+                      onChange={(field, value) =>
+                        handleNestedChange('emergencyContact', field, value)
+                      }
+                      onBlur={handleBlur}
+                    />
+                  )}
+
+                  {activeSection === 'medical' && (
+                    <PatientMedicalInfoForm
+                      formData={formData}
+                      formErrors={formErrors}
+                      onChange={handleChange}
+                      onArrayChange={handleArrayChange}
+                      onBlur={handleBlur} // ✅ FIXED: Added missing onBlur prop
+                    />
+                  )}
+
+                  {activeSection === 'insurance' && (
+                    <PatientInsuranceForm
+                      formData={formData}
+                      formErrors={formErrors}
+                      onChange={(field, value) =>
+                        handleNestedChange('insurance', field, value)
+                      }
+                      onDateChange={handleInsuranceDateChange}
+                      onBlur={handleBlur}
+                    />
+                  )}
+                </div>
+
+                {/* Form Actions */}
+                <div className='px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg'>
+                  <PatientFormActions
+                    onCancel={handleCancel}
+                    saving={saving}
+                    currentSection={activeSection}
+                    sections={sections}
+                    onSectionChange={setActiveSection}
+                    hasErrors={hasErrors}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </form>

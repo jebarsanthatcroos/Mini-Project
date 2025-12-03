@@ -1,8 +1,9 @@
-import { Schema, model, models, Document, Types } from 'mongoose';
+import { Schema, model, models, Document, Types, Model } from 'mongoose';
 
 export interface IUser {
   name: string;
   email: string;
+  nic: string;
   password?: string;
   role: UserRole;
   image?: string;
@@ -15,6 +16,47 @@ export interface IUser {
   bio?: string;
   isActive?: boolean;
   lastLogin?: Date;
+  notificationPreferences?: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    inAppNotifications: boolean;
+    appointmentReminders: boolean;
+    messageAlerts: boolean;
+    systemUpdates: boolean;
+    marketingEmails: boolean;
+  };
+  settings?: {
+    theme: 'light' | 'dark' | 'system';
+    language: string;
+    timezone: string;
+    dateFormat: string;
+    timeFormat: '12h' | '24h';
+    notifications: {
+      email: boolean;
+      push: boolean;
+      sms: boolean;
+      desktop: boolean;
+      appointmentReminders: boolean;
+      prescriptionUpdates: boolean;
+      labResults: boolean;
+      billingAlerts: boolean;
+      marketingEmails: boolean;
+      newsletter: boolean;
+    };
+    privacy: {
+      profileVisibility: 'public' | 'contacts' | 'private';
+      showOnlineStatus: boolean;
+      allowMessaging: 'everyone' | 'contacts' | 'none';
+      dataSharing: boolean;
+      analytics: boolean;
+    };
+    security: {
+      twoFactorAuth: boolean;
+      loginAlerts: boolean;
+      sessionTimeout: number;
+      passwordExpiry: number;
+    };
+  };
 }
 
 export type UserRole =
@@ -28,6 +70,9 @@ export type UserRole =
   | 'PATIENT'
   | 'USER';
 
+// Define the settings type for better type safety
+export type UserSettings = IUser['settings'];
+
 export interface IUserDocument extends IUser, Document {
   _id: Types.ObjectId;
   createdAt: Date;
@@ -40,9 +85,18 @@ export interface IUserDocument extends IUser, Document {
   // Methods
   isActiveUser(): boolean;
   hasRole(role: UserRole | UserRole[]): boolean;
+  getSettings(): UserSettings;
+  updateSettings(newSettings: Partial<UserSettings>): Promise<this>;
 }
 
-const UserSchema = new Schema<IUserDocument>(
+// Define static methods interface
+export interface IUserModel extends Model<IUserDocument> {
+  findActiveUsers(): Promise<IUserDocument[]>;
+  findByRole(role: UserRole): Promise<IUserDocument[]>;
+  findByLanguage(language: string): Promise<IUserDocument[]>;
+}
+
+const UserSchema = new Schema<IUserDocument, IUserModel>(
   {
     name: {
       type: String,
@@ -54,12 +108,20 @@ const UserSchema = new Schema<IUserDocument>(
     email: {
       type: String,
       required: [true, 'Email is required'],
-      unique: true, // This automatically creates an index
+      unique: true,
       lowercase: true,
       match: [
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
         'Please enter a valid email',
       ],
+    },
+    nic: {
+      type: String,
+      required: [true, 'NIC is required'],
+      unique: true,
+      trim: true,
+      uppercase: true,
+      match: [/^([0-9]{9}[VvXx]|[0-9]{12})$/, 'Invalid NIC format'],
     },
     password: {
       type: String,
@@ -120,6 +182,72 @@ const UserSchema = new Schema<IUserDocument>(
     lastLogin: {
       type: Date,
     },
+    notificationPreferences: {
+      emailNotifications: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: true },
+      inAppNotifications: { type: Boolean, default: true },
+      appointmentReminders: { type: Boolean, default: true },
+      messageAlerts: { type: Boolean, default: true },
+      systemUpdates: { type: Boolean, default: true },
+      marketingEmails: { type: Boolean, default: false },
+    },
+    settings: {
+      theme: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'system',
+      },
+      language: {
+        type: String,
+        default: 'en',
+      },
+      timezone: {
+        type: String,
+        default: 'Asia/Colombo',
+      },
+      dateFormat: {
+        type: String,
+        default: 'DD/MM/YYYY',
+      },
+      timeFormat: {
+        type: String,
+        enum: ['12h', '24h'],
+        default: '12h',
+      },
+      notifications: {
+        email: { type: Boolean, default: true },
+        push: { type: Boolean, default: true },
+        sms: { type: Boolean, default: false },
+        desktop: { type: Boolean, default: true },
+        appointmentReminders: { type: Boolean, default: true },
+        prescriptionUpdates: { type: Boolean, default: true },
+        labResults: { type: Boolean, default: true },
+        billingAlerts: { type: Boolean, default: true },
+        marketingEmails: { type: Boolean, default: false },
+        newsletter: { type: Boolean, default: false },
+      },
+      privacy: {
+        profileVisibility: {
+          type: String,
+          enum: ['public', 'contacts', 'private'],
+          default: 'contacts',
+        },
+        showOnlineStatus: { type: Boolean, default: true },
+        allowMessaging: {
+          type: String,
+          enum: ['everyone', 'contacts', 'none'],
+          default: 'contacts',
+        },
+        dataSharing: { type: Boolean, default: true },
+        analytics: { type: Boolean, default: true },
+      },
+      security: {
+        twoFactorAuth: { type: Boolean, default: false },
+        loginAlerts: { type: Boolean, default: true },
+        sessionTimeout: { type: Number, default: 60 }, // minutes
+        passwordExpiry: { type: Number, default: 90 }, // days
+      },
+    },
   },
   {
     timestamps: true,
@@ -179,12 +307,68 @@ UserSchema.methods.hasRole = function (
   return this.role === role;
 };
 
-// REMOVED DUPLICATE INDEX: UserSchema.index({ email: 1 });
-// The unique: true on the email field already creates this index
+// Method to get user settings with defaults
+UserSchema.methods.getSettings = function (this: IUserDocument): UserSettings {
+  const defaultSettings: UserSettings = {
+    theme: 'system',
+    language: 'en',
+    timezone: 'Asia/Colombo',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    notifications: {
+      email: true,
+      push: true,
+      sms: false,
+      desktop: true,
+      appointmentReminders: true,
+      prescriptionUpdates: true,
+      labResults: true,
+      billingAlerts: true,
+      marketingEmails: false,
+      newsletter: false,
+    },
+    privacy: {
+      profileVisibility: 'contacts',
+      showOnlineStatus: true,
+      allowMessaging: 'contacts',
+      dataSharing: true,
+      analytics: true,
+    },
+    security: {
+      twoFactorAuth: false,
+      loginAlerts: true,
+      sessionTimeout: 60,
+      passwordExpiry: 90,
+    },
+  };
+
+  if (!this.settings) {
+    return defaultSettings;
+  }
+
+  return {
+    ...defaultSettings,
+    ...this.settings,
+    notifications: {
+      ...defaultSettings.notifications,
+      ...(this.settings.notifications || {}),
+    },
+    privacy: {
+      ...defaultSettings.privacy,
+      ...(this.settings.privacy || {}),
+    },
+    security: {
+      ...defaultSettings.security,
+      ...(this.settings.security || {}),
+    },
+  };
+};
+UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ department: 1 });
 UserSchema.index({ createdAt: -1 });
+UserSchema.index({ 'settings.language': 1 });
 
 // Static method to find active users
 UserSchema.statics.findActiveUsers = function () {
@@ -196,6 +380,44 @@ UserSchema.statics.findByRole = function (role: UserRole) {
   return this.find({ role, isActive: true });
 };
 
-const User = models.User || model<IUserDocument>('User', UserSchema);
+// Static method to find by language preference
+UserSchema.statics.findByLanguage = function (language: string) {
+  return this.find({
+    $or: [
+      { 'settings.language': language },
+      { 'settings.language': { $exists: false } },
+    ],
+    isActive: true,
+  });
+};
+
+// Pre-save middleware to ensure settings are properly structured
+UserSchema.pre('save', function (next) {
+  // Ensure settings exist with proper structure
+  if (!this.isModified('settings') || !this.settings) {
+    return next();
+  }
+
+  // Ensure nested objects exist
+  if (!this.settings.notifications) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.settings.notifications = {} as any;
+  }
+
+  if (!this.settings.privacy) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.settings.privacy = {} as any;
+  }
+
+  if (!this.settings.security) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.settings.security = {} as any;
+  }
+
+  next();
+});
+
+const User =
+  models.User || model<IUserDocument, IUserModel>('User', UserSchema);
 
 export default User;

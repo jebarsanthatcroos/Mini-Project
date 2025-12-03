@@ -1,4 +1,3 @@
-// app/api/lab-technicians/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
@@ -55,6 +54,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const body = await request.json();
 
     // Remove fields that shouldn't be updated directly
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user, employeeId, _id, createdAt, updatedAt, ...updateData } = body;
 
     const technician = await LabTechnician.findByIdAndUpdate(
@@ -71,10 +71,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     return NextResponse.json({ technician });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Error updating lab technician:', error);
 
     if (error.name === 'ValidationError') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errors = Object.values(error.errors).map((err: any) => err.message);
       return NextResponse.json(
         { error: 'Validation error', details: errors },

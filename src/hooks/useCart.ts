@@ -23,10 +23,12 @@ export const useCart = () => {
       setCartItems(event.detail || []);
     };
 
+    // eslint-disable-next-line no-undef
     window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
     return () =>
       window.removeEventListener(
         'cartUpdated',
+        // eslint-disable-next-line no-undef
         handleCartUpdate as EventListener
       );
   }, []);

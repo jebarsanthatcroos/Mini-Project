@@ -1,55 +1,39 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import {
-  FiArrowLeft,
-  FiSave,
-  FiUser,
-  FiCalendar,
-  FiFileText,
-  FiAlertCircle,
-  FiSearch,
-} from 'react-icons/fi';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { Patient, AppointmentFormData } from '@/types/appointment';
 import Loading from '@/components/Loading';
 import ErrorComponent from '@/components/Error';
 
-interface Patient {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: string;
-}
+import NewAppointmentHeader from '@/components/Appointment/NewAppointmentHeader';
+import PatientSelection from '@/components/Appointment/PatientSelection';
+import AppointmentDetailsForm from '@/components/Appointment/Form/AppointmentDetailsForm';
+import MedicalInfoForm from '@/components/Appointment/Form/MedicalInfoForm';
+import AppointmentSummary from '@/components/Appointment/AppointmentSummary';
+import AppointmentFormActions from '@/components/Appointment/Form/AppointmentFormActions';
+import HelpTips from '@/components/Appointment/HelpTips';
 
-interface AppointmentFormData {
-  patientId: string;
-  appointmentDate: string;
-  appointmentTime: string;
-  duration: number;
-  type: 'CONSULTATION' | 'FOLLOW_UP' | 'CHECKUP' | 'EMERGENCY' | 'OTHER';
-  status: 'SCHEDULED' | 'CONFIRMED';
-  reason: string;
-  symptoms?: string;
-}
+const initialFormData: AppointmentFormData = {
+  patientId: '',
+  appointmentDate: '',
+  appointmentTime: '',
+  duration: 30,
+  type: 'CONSULTATION',
+  status: 'SCHEDULED',
+  reason: '',
+  symptoms: '',
+  diagnosis: '',
+  prescription: '',
+  notes: '',
+};
 
 export default function NewAppointmentPage() {
   const router = useRouter();
-
-  const [formData, setFormData] = useState<AppointmentFormData>({
-    patientId: '',
-    appointmentDate: '',
-    appointmentTime: '',
-    duration: 30,
-    type: 'CONSULTATION',
-    status: 'SCHEDULED',
-    reason: '',
-    symptoms: '',
-  });
-
+  const searchParams = useSearchParams();
+  const [formData, setFormData] =
+    useState<AppointmentFormData>(initialFormData);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,7 +41,26 @@ export default function NewAppointmentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const successParam = searchParams.get('success');
+    if (successParam === 'true') {
+      setSuccess('Appointment created successfully!');
+
+      // Auto-hide success message after 5 seconds
+      const timer = setTimeout(() => {
+        setSuccess(null);
+        // Remove success parameter from URL without page reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('success');
+        window.history.replaceState({}, '', newUrl.toString());
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchPatients();
@@ -70,7 +73,9 @@ export default function NewAppointmentPage() {
           `${patient.firstName} ${patient.lastName}`
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          patient.email.toLowerCase().includes(searchTerm.toLowerCase())
+          patient.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (patient.nic &&
+            patient.nic.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredPatients(filtered);
     } else {
@@ -81,7 +86,9 @@ export default function NewAppointmentPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/patients');
+      setError(null);
+
+      const response = await fetch('/api/patients?isActive=true&limit=100');
 
       if (!response.ok) {
         throw new Error('Failed to fetch patients');
@@ -90,14 +97,16 @@ export default function NewAppointmentPage() {
       const result = await response.json();
 
       if (result.success) {
-        setPatients(result.data);
-        setFilteredPatients(result.data);
+        setPatients(result.data || []);
+        setFilteredPatients(result.data || []);
       } else {
         throw new Error(result.message || 'Failed to fetch patients');
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
       setError('Failed to load patients');
+      setPatients([]);
+      setFilteredPatients([]);
     } finally {
       setLoading(false);
     }
@@ -130,6 +139,10 @@ export default function NewAppointmentPage() {
       errors.reason = 'Reason for visit is required';
     }
 
+    if (!formData.type) {
+      errors.type = 'Appointment type is required';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -138,19 +151,28 @@ export default function NewAppointmentPage() {
     e.preventDefault();
 
     if (!validateForm()) {
+      const firstError = Object.keys(formErrors)[0];
+      if (firstError) {
+        const element = document.querySelector(`[name="${firstError}"]`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
     setSaving(true);
     setError(null);
+    setSuccess(null);
 
     try {
-      const response = await fetch('/api/doctor/appointments', {
+      const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          appointmentDate: new Date(formData.appointmentDate).toISOString(),
+        }),
       });
 
       if (!response.ok) {
@@ -161,7 +183,8 @@ export default function NewAppointmentPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push('/doctor/appointments');
+        // Redirect with success parameter
+        router.push('/doctor/appointments?success=true');
       } else {
         throw new Error(result.message || 'Failed to create appointment');
       }
@@ -170,6 +193,7 @@ export default function NewAppointmentPage() {
       setError(
         error instanceof Error ? error.message : 'Failed to create appointment'
       );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -186,7 +210,6 @@ export default function NewAppointmentPage() {
       [name]: value,
     }));
 
-    // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -202,418 +225,120 @@ export default function NewAppointmentPage() {
     }));
     setSearchTerm(`${patient.firstName} ${patient.lastName}`);
     setShowPatientDropdown(false);
+
+    if (formErrors.patientId) {
+      setFormErrors(prev => ({
+        ...prev,
+        patientId: '',
+      }));
+    }
   };
 
   const getSelectedPatient = () => {
     return patients.find(patient => patient._id === formData.patientId);
   };
 
-  const calculateAge = (dateOfBirth: string) => {
-    const birthDate = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.patient-search-container')) {
+        setShowPatientDropdown(false);
+      }
+    };
 
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-
-    return age;
-  };
-
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (loading) return <Loading />;
-  if (error) return <ErrorComponent message={error} />;
+  if (error && !patients.length) return <ErrorComponent message={error} />;
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
       <div className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8'>
-        {/* Header */}
-        <div className='mb-8'>
-          <button
-            onClick={() => router.push('/doctor/appointments')}
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
-          >
-            <FiArrowLeft className='w-5 h-5' />
-            Back to Appointments
-          </button>
+        <NewAppointmentHeader
+          onBack={() => router.push('/doctor/appointments')}
+        />
 
-          <div className='flex justify-between items-start'>
-            <div>
-              <h1 className='text-3xl font-bold text-gray-900'>
-                New Appointment
-              </h1>
-              <p className='text-gray-600 mt-2'>
-                Schedule a new appointment with a patient
-              </p>
+        {/* Success Message */}
+        {success && (
+          <div className='mb-6 bg-green-50 border border-green-200 rounded-lg p-4'>
+            <div className='flex items-center gap-2 text-green-800'>
+              <FiCheckCircle className='w-5 h-5' />
+              <span className='font-medium'>{success}</span>
             </div>
+            <button
+              onClick={() => setSuccess(null)}
+              className='mt-2 text-sm text-green-600 hover:text-green-800 underline'
+            >
+              Dismiss
+            </button>
           </div>
-        </div>
+        )}
 
+        {/* Error Message */}
         {error && (
           <div className='mb-6 bg-red-50 border border-red-200 rounded-lg p-4'>
             <div className='flex items-center gap-2 text-red-800'>
               <FiAlertCircle className='w-5 h-5' />
               <span className='font-medium'>Error: {error}</span>
             </div>
+            <button
+              onClick={() => setError(null)}
+              className='mt-2 text-sm text-red-600 hover:text-red-800 underline'
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className='patient-search-container'>
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
             {/* Main Form */}
             <div className='lg:col-span-2 space-y-6'>
-              {/* Patient Selection */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiUser className='w-5 h-5 text-blue-600' />
-                  Patient Information
-                </h2>
+              <PatientSelection
+                formData={formData}
+                patients={patients}
+                filteredPatients={filteredPatients}
+                searchTerm={searchTerm}
+                showPatientDropdown={showPatientDropdown}
+                formErrors={formErrors}
+                onSearchChange={setSearchTerm}
+                onPatientSelect={handlePatientSelect}
+                onShowDropdown={setShowPatientDropdown}
+                getSelectedPatient={getSelectedPatient}
+              />
 
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Select Patient *
-                    </label>
-                    <div className='relative'>
-                      <div className='relative'>
-                        <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
-                        <input
-                          type='text'
-                          placeholder='Search patients by name or email...'
-                          value={searchTerm}
-                          onChange={e => {
-                            setSearchTerm(e.target.value);
-                            setShowPatientDropdown(true);
-                          }}
-                          onFocus={() => setShowPatientDropdown(true)}
-                          className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                        />
-                      </div>
+              <AppointmentDetailsForm
+                formData={formData}
+                formErrors={formErrors}
+                onChange={handleChange}
+              />
 
-                      {showPatientDropdown && filteredPatients.length > 0 && (
-                        <div className='absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto'>
-                          {filteredPatients.map(patient => (
-                            <div
-                              key={patient._id}
-                              onClick={() => handlePatientSelect(patient)}
-                              className='px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0'
-                            >
-                              <div className='font-medium text-gray-900'>
-                                {patient.firstName} {patient.lastName}
-                              </div>
-                              <div className='text-sm text-gray-500'>
-                                {patient.email} •{' '}
-                                {calculateAge(patient.dateOfBirth)} years •{' '}
-                                {patient.gender.toLowerCase()}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {formErrors.patientId && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.patientId}
-                      </p>
-                    )}
-                  </div>
-
-                  {formData.patientId && (
-                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-                      <h3 className='font-medium text-blue-900 mb-2'>
-                        Selected Patient
-                      </h3>
-                      <div className='grid grid-cols-2 gap-4 text-sm'>
-                        <div>
-                          <span className='text-blue-700'>Name:</span>
-                          <p className='text-blue-900 font-medium'>
-                            {getSelectedPatient()?.firstName}{' '}
-                            {getSelectedPatient()?.lastName}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Email:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient()?.email}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Phone:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient()?.phone}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-blue-700'>Age:</span>
-                          <p className='text-blue-900'>
-                            {getSelectedPatient() &&
-                              calculateAge(
-                                getSelectedPatient()!.dateOfBirth
-                              )}{' '}
-                            years
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Appointment Details */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiCalendar className='w-5 h-5 text-green-600' />
-                  Appointment Details
-                </h2>
-
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Date *
-                    </label>
-                    <input
-                      type='date'
-                      name='appointmentDate'
-                      value={formData.appointmentDate}
-                      onChange={handleChange}
-                      min={getMinDate()}
-                      required
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.appointmentDate
-                          ? 'border-red-300'
-                          : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.appointmentDate && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.appointmentDate}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Time *
-                    </label>
-                    <input
-                      type='time'
-                      name='appointmentTime'
-                      value={formData.appointmentTime}
-                      onChange={handleChange}
-                      required
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.appointmentTime
-                          ? 'border-red-300'
-                          : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.appointmentTime && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.appointmentTime}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Duration *
-                    </label>
-                    <select
-                      name='duration'
-                      value={formData.duration}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    >
-                      <option value={15}>15 minutes</option>
-                      <option value={30}>30 minutes</option>
-                      <option value={45}>45 minutes</option>
-                      <option value={60}>60 minutes</option>
-                      <option value={90}>90 minutes</option>
-                      <option value={120}>120 minutes</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Appointment Type *
-                    </label>
-                    <select
-                      name='type'
-                      value={formData.type}
-                      onChange={handleChange}
-                      required
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    >
-                      <option value='CONSULTATION'>Consultation</option>
-                      <option value='FOLLOW_UP'>Follow-up</option>
-                      <option value='CHECKUP'>Checkup</option>
-                      <option value='EMERGENCY'>Emergency</option>
-                      <option value='OTHER'>Other</option>
-                    </select>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Medical Information */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2'>
-                  <FiFileText className='w-5 h-5 text-purple-600' />
-                  Medical Information
-                </h2>
-
-                <div className='space-y-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Reason for Visit *
-                    </label>
-                    <textarea
-                      name='reason'
-                      value={formData.reason}
-                      onChange={handleChange}
-                      required
-                      rows={4}
-                      placeholder='Describe the primary reason for this appointment...'
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formErrors.reason ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                    />
-                    {formErrors.reason && (
-                      <p className='mt-1 text-sm text-red-600'>
-                        {formErrors.reason}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>
-                      Symptoms (Optional)
-                    </label>
-                    <textarea
-                      name='symptoms'
-                      value={formData.symptoms}
-                      onChange={handleChange}
-                      rows={3}
-                      placeholder='List any symptoms reported by the patient...'
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    />
-                  </div>
-                </div>
-              </motion.div>
+              <MedicalInfoForm
+                formData={formData}
+                formErrors={formErrors}
+                onChange={handleChange}
+              />
             </div>
 
             {/* Sidebar */}
             <div className='space-y-6'>
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <h2 className='text-lg font-semibold text-gray-900 mb-4'>
-                  Appointment Summary
-                </h2>
+              <AppointmentSummary
+                formData={formData}
+                selectedPatient={getSelectedPatient()}
+              />
 
-                <div className='space-y-3 text-sm'>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-500'>Status:</span>
-                    <span className='font-medium text-blue-600'>Scheduled</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-500'>Duration:</span>
-                    <span className='font-medium'>
-                      {formData.duration} minutes
-                    </span>
-                  </div>
-                  {formData.appointmentDate && (
-                    <div className='flex justify-between'>
-                      <span className='text-gray-500'>Date:</span>
-                      <span className='font-medium'>
-                        {new Date(formData.appointmentDate).toLocaleDateString(
-                          'en-US',
-                          {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {formData.appointmentTime && (
-                    <div className='flex justify-between'>
-                      <span className='text-gray-500'>Time:</span>
-                      <span className='font-medium'>
-                        {new Date(
-                          `2000-01-01T${formData.appointmentTime}`
-                        ).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              <AppointmentFormActions
+                onCancel={() => router.push('/doctor/appointments')}
+                onSubmit={handleSubmit}
+                saving={saving}
+              />
 
-              {/* Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'
-              >
-                <div className='space-y-3'>
-                  <button
-                    type='submit'
-                    disabled={saving}
-                    className='w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors'
-                  >
-                    <FiSave className='w-4 h-4' />
-                    {saving ? 'Creating Appointment...' : 'Create Appointment'}
-                  </button>
-
-                  <button
-                    type='button'
-                    onClick={() => router.push('/doctor/appointments')}
-                    className='w-full px-4 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className='mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
-                  <p className='text-xs text-yellow-800'>
-                    <strong>Note:</strong> The patient will receive a
-                    notification about this appointment once created.
-                  </p>
-                </div>
-              </motion.div>
+              <HelpTips />
             </div>
           </div>
         </form>

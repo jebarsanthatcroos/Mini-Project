@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
@@ -6,7 +7,7 @@ import User from '@/models/User';
 import Patient from '@/models/Patient';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// GET /api/patients - Get all patients or filter by query params
+// GET /api/patients - Get all patients with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -42,63 +43,93 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
-    const isActive = searchParams.get('isActive');
-    const physicianId = searchParams.get('physicianId');
+    const gender = searchParams.get('gender');
+    const bloodType = searchParams.get('bloodType');
+    const ageGroup = searchParams.get('ageGroup');
+    const isActive = searchParams.get('isActive') ?? 'true'; // Default to active patients
 
     const query: any = {};
-
-    // If doctor, only show their patients
-    if (user.role === 'DOCTOR') {
-      query.primaryPhysician = user._id;
-    }
-
-    // Filter by physician if provided
-    if (physicianId && user.role !== 'DOCTOR') {
-      query.primaryPhysician = physicianId;
-    }
 
     // Filter by active status
     if (isActive !== null) {
       query.isActive = isActive === 'true';
     }
 
+    // Filter by gender
+    if (gender && gender !== 'ALL') {
+      query.gender = gender;
+    }
+
+    // Filter by blood type
+    if (bloodType && bloodType !== 'ALL') {
+      query.bloodType = bloodType;
+    }
+
+    // If user is a doctor, only show their created patients
+    if (user.role === 'DOCTOR') {
+      query.createdBy = user._id;
+    }
+
     const skip = (page - 1) * limit;
 
     let patients;
+    let total;
+
     if (search) {
-      // Search by medical record number or user details
-      const users = await User.find({
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-        ],
-        role: 'PATIENT',
-      }).select('_id');
-
-      const userIds = users.map(u => u._id);
-
+      // Search across multiple fields
       patients = await Patient.find({
         ...query,
         $or: [
-          { userId: { $in: userIds } },
-          { medicalRecordNumber: { $regex: search, $options: 'i' } },
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+          { nic: { $regex: search, $options: 'i' } },
         ],
       })
-        .populate('userId', '-password')
-        .populate('primaryPhysician', '-password')
+        .populate('createdBy', 'name email role')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
+
+      total = await Patient.countDocuments({
+        ...query,
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+          { nic: { $regex: search, $options: 'i' } },
+        ],
+      });
     } else {
       patients = await Patient.find(query)
-        .populate('userId', '-password')
-        .populate('primaryPhysician', '-password')
+        .populate('createdBy', 'name email role')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
+
+      total = await Patient.countDocuments(query);
     }
 
-    const total = await Patient.countDocuments(query);
+    // Apply age group filtering in memory if needed
+    if (ageGroup && ageGroup !== 'ALL') {
+      patients = patients.filter(patient => {
+        const age = patient.calculateAge();
+        switch (ageGroup) {
+          case 'CHILD':
+            return age < 18;
+          case 'ADULT':
+            return age >= 18 && age < 65;
+          case 'SENIOR':
+            return age >= 65;
+          default:
+            return true;
+        }
+      });
+      // Update total for age group filtering
+      total = patients.length;
+    }
 
     return NextResponse.json({
       success: true,
@@ -154,62 +185,117 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate required fields
-    if (!body.userId || !body.dateOfBirth || !body.gender) {
-      return NextResponse.json(
-        { success: false, message: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
+    const requiredFields = [
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+      'nic',
+      'dateOfBirth',
+      'gender',
+    ];
+    const missingFields = requiredFields.filter(field => !body[field]);
 
-    // Check if user exists and has PATIENT role
-    const patientUser = await User.findById(body.userId);
-    if (!patientUser) {
-      return NextResponse.json(
-        { success: false, message: 'Patient user not found' },
-        { status: 404 }
-      );
-    }
-
-    if (patientUser.role !== 'PATIENT') {
-      return NextResponse.json(
-        { success: false, message: 'User must have PATIENT role' },
-        { status: 400 }
-      );
-    }
-
-    // Check if patient already exists for this user
-    const existingPatient = await Patient.findOne({ userId: body.userId });
-    if (existingPatient) {
+    if (missingFields.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Patient record already exists for this user',
+          message: `Missing required fields: ${missingFields.join(', ')}`,
         },
         { status: 400 }
       );
     }
 
-    // Generate medical record number if not provided
-    if (!body.medicalRecordNumber) {
-      body.medicalRecordNumber = await (Patient as any).generateMRN();
+    // Validate email format
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(body.email)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid email format' },
+        { status: 400 }
+      );
     }
 
-    // Validate primary physician if provided
-    if (body.primaryPhysician) {
-      const physician = await User.findById(body.primaryPhysician);
-      if (!physician || physician.role !== 'DOCTOR') {
-        return NextResponse.json(
-          { success: false, message: 'Invalid primary physician' },
-          { status: 400 }
-        );
-      }
+    // Validate NIC format
+    const nicRegex = /^[0-9]{9}[VX]|[0-9]{12}$/;
+    if (!nicRegex.test(body.nic)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid NIC format' },
+        { status: 400 }
+      );
     }
 
+    // Validate date of birth
+    const dob = new Date(body.dateOfBirth);
+    if (dob >= new Date()) {
+      return NextResponse.json(
+        { success: false, message: 'Date of birth must be in the past' },
+        { status: 400 }
+      );
+    }
+
+    // Check if patient with same email or NIC already exists
+    const existingPatient = await Patient.findOne({
+      $or: [
+        { email: body.email.toLowerCase() },
+        { nic: body.nic.toUpperCase() },
+      ],
+    });
+
+    if (existingPatient) {
+      const field =
+        existingPatient.email === body.email.toLowerCase() ? 'email' : 'NIC';
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Patient with this ${field} already exists`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Set createdBy to current user
+    body.createdBy = user._id;
+
+    // Normalize data
+    body.email = body.email.toLowerCase();
+    body.nic = body.nic.toUpperCase();
+
+    // Set default values for nested objects if not provided
+    if (!body.address) {
+      body.address = {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+      };
+    }
+
+    if (!body.emergencyContact) {
+      body.emergencyContact = {
+        name: '',
+        phone: '',
+        relationship: '',
+      };
+    }
+
+    if (!body.insurance) {
+      body.insurance = {
+        provider: '',
+        policyNumber: '',
+        groupNumber: '',
+        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      };
+    }
+
+    // Create the patient
     const patient = await Patient.create(body);
 
-    const populatedPatient = await Patient.findById(patient._id)
-      .populate('userId', '-password')
-      .populate('primaryPhysician', '-password');
+    // Populate createdBy field in response
+    const populatedPatient = await Patient.findById(patient._id).populate(
+      'createdBy',
+      'name email role'
+    );
 
     return NextResponse.json(
       {
@@ -221,113 +307,32 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Error creating patient:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
 
-// PUT /api/patients - Update multiple patients (bulk update)
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    await connectDB();
-
-    const user = await User.findOne({ email: session.user.email });
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const { patientIds, updates } = body;
-
-    if (!patientIds || !Array.isArray(patientIds) || patientIds.length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid patient IDs' },
+        {
+          success: false,
+          message: `Patient with this ${field} already exists`,
+        },
         { status: 400 }
       );
     }
 
-    const result = await Patient.updateMany(
-      { _id: { $in: patientIds } },
-      { $set: updates }
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: `Updated ${result.modifiedCount} patients`,
-      data: { modified: result.modifiedCount },
-    });
-  } catch (error: any) {
-    console.error('Error updating patients:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE /api/patients - Delete multiple patients (bulk delete)
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    await connectDB();
-
-    const user = await User.findOne({ email: session.user.email });
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const idsParam = searchParams.get('ids');
-
-    if (!idsParam) {
-      return NextResponse.json(
-        { success: false, message: 'No patient IDs provided' },
+        {
+          success: false,
+          message: 'Validation failed',
+          errors,
+        },
         { status: 400 }
       );
     }
 
-    const patientIds = idsParam.split(',');
-
-    // Soft delete by setting isActive to false
-    const result = await Patient.updateMany(
-      { _id: { $in: patientIds } },
-      { $set: { isActive: false } }
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: `Deactivated ${result.modifiedCount} patients`,
-      data: { deactivated: result.modifiedCount },
-    });
-  } catch (error: any) {
-    console.error('Error deleting patients:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Internal server error' },
       { status: 500 }

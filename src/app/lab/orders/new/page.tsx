@@ -1,4 +1,3 @@
-// app/lab/orders/new/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,12 +6,12 @@ import { motion } from 'framer-motion';
 import { FiArrowLeft } from 'react-icons/fi';
 import Loading from '@/components/Loading';
 import ErrorComponent from '@/components/Error';
-import PatientSelection from './components/PatientSelection';
-import TestSelection from './components/TestSelection';
-import OrderDetails from './components/OrderDetails';
-import PrioritySettings from './components/PrioritySettings';
-import OrderSummary from './components/OrderSummary';
-import { NewOrderData, Patient, LabTest } from './types';
+import PatientSelection from '../../../../components/lab/orders/new/PatientSelection';
+import TestSelection from '../../../../components/lab/orders/new/TestSelection';
+import OrderDetails from '../../../../components/lab/orders/new/OrderDetails';
+import PrioritySettings from '../../../../components/lab/orders/new/PrioritySettings';
+import OrderSummary from '../../../../components/lab/orders/new/OrderSummary';
+import { NewOrderData, Patient, LabTest } from '@/types/lab';
 
 const defaultOrderData: NewOrderData = {
   patientId: '',
@@ -56,9 +55,9 @@ export default function NewLabOrderPage() {
     setOrderData(prev => ({ ...prev, patientId: patient._id }));
   };
 
-  const handleTestSelect = (test: LabTest) => {
+  const handleTestSelect = (test: LabTest | null) => {
     setSelectedTest(test);
-    setOrderData(prev => ({ ...prev, testId: test._id }));
+    setOrderData(prev => ({ ...prev, testId: test?._id || '' }));
   };
 
   const handleOrderDataChange = (updates: Partial<NewOrderData>) => {

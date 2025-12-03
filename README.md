@@ -1,9 +1,23 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 advanced ui desing react-hook-form react-icons zod nodemailer framer-motion
-api/doctor/appointments/stats/
-api/doctor/appointments/[id]/stats
-api/doctor/appointments/[id]
-api/doctor/appointments
+
+GET /api/patients - Get all patients with filtering/pagination
+
+POST /api/patients - Create new patient
+
+GET /api/patients/[id] - Get single patient
+
+PATCH /api/patients/[id] - Update patient
+
+DELETE /api/patients/[id] - Deactivate patient
+
+PUT /api/patients/[id]/restore - Restore patient
+
+GET /api/patients/stats - Get patient statistics
+
+/api/patients/check?email=jebarsanthatcroos@gmail.com&nic=200121901656
+
+GET /api/patients/search - Search patients
 
 i would like to ask to ask you to differentite the components
 

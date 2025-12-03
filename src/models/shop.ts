@@ -1,57 +1,42 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 
-export interface IShop extends Document {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  description?: string;
-  inStock?: boolean;
-  category?: string;
-  email?: string; // If you have email field
-  createdAt: Date;
-}
+const shopSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Shop name is required'],
+      trim: true,
+    },
+    address: {
+      type: String,
+      required: [true, 'Address is required'],
+      trim: true,
+    },
+    phone: {
+      type: String,
+      required: [true, 'Phone number is required'],
+      trim: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      // REMOVE THIS: index: true, // ← This causes duplicate with schema.index()
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        'Please enter a valid email',
+      ],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
 
-const shopSchema: Schema = new Schema({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  name: {
-    type: String,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-  image: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-  },
-  inStock: {
-    type: Boolean,
-    default: true,
-  },
-  category: {
-    type: String,
-  },
-  email: {
-    type: String,
-    // Remove index: true if you use schema.index() below
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+// ONLY define indexes here, NOT in the field definitions above
+// shopSchema.index({ email: 1 }); // ← COMMENT THIS OUT if you don't need email index
 
-// Remove this line if you have index: true in the schema above
-// shopSchema.index({ email: 1 });
-
-export default mongoose.models.Shop ||
-  mongoose.model<IShop>('Shop', shopSchema);
+const Shop = models.Shop || model('Shop', shopSchema);
+export default Shop;

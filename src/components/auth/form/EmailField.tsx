@@ -1,28 +1,30 @@
-import { UseFormRegister } from 'react-hook-form';
+import { UseFormRegister, FieldValues, Path } from 'react-hook-form';
 import { MdEmail, MdCheck } from 'react-icons/md';
 import { FaExclamationTriangle } from 'react-icons/fa';
-import { SignInFormData } from '@/app/auth/signin/page';
-import { SignUpFormData } from '@/app/auth/signup/page';
 
-interface EmailFieldProps {
-  register: UseFormRegister<SignInFormData | SignUpFormData>;
+interface EmailFieldProps<T extends FieldValues> {
+  register: UseFormRegister<T>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error?: any;
   value?: string;
+  placeholder?: string;
+  label?: string;
 }
 
-export default function EmailField({
+export default function EmailField<T extends FieldValues>({
   register,
   error,
   value,
-}: EmailFieldProps) {
+  placeholder = 'Enter your email',
+  label = 'Email address',
+}: EmailFieldProps<T>) {
   return (
     <div>
       <label
         htmlFor='email'
         className='block text-sm font-medium text-gray-700 mb-2'
       >
-        Email address
+        {label}
       </label>
       <div className='relative'>
         <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
@@ -37,9 +39,9 @@ export default function EmailField({
               ? 'border-red-300 bg-red-50'
               : 'border-gray-300 focus:border-blue-500'
           }`}
-          placeholder='Enter your email'
+          placeholder={placeholder}
           suppressHydrationWarning
-          {...register('email')}
+          {...register('email' as Path<T>)}
         />
         {!error && value && (
           <div className='absolute inset-y-0 right-0 pr-3 flex items-center'>

@@ -15,7 +15,7 @@ export default function PharmacistLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className='flex h-screen bg-gray-50'>
+    <div className='flex h-screen bg-gray-50' suppressHydrationWarning>
       <div className='flex-1 flex flex-col overflow-hidden'>
         <PharmacistHeader />
         <main className='flex-1 overflow-auto p-6'>

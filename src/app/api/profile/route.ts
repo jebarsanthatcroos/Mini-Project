@@ -1,16 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getServerSession } from 'next-auth';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { validateProfileData } from '@/validation/profile';
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session) {
-      return Response.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     await connectDB();
@@ -18,13 +22,36 @@ export async function GET() {
     const user = await User.findById(session.user.id).select('-password');
 
     if (!user) {
-      return Response.json({ message: 'User not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
     }
 
-    return Response.json({ user: user.toJSON() }, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        phone: user.phone,
+        department: user.department,
+        specialization: user.specialization,
+        address: user.address,
+        bio: user.bio,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+    });
   } catch (error: any) {
     console.error('Profile fetch error:', error);
-    return Response.json({ message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -33,45 +60,48 @@ export async function PUT(req: NextRequest) {
     const session = await getServerSession(authOptions);
 
     if (!session) {
-      return Response.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { name, phone, department, specialization, address, bio } =
-      await req.json();
-
-    // Validation
-    if (name && (name.length < 2 || name.length > 100)) {
-      return Response.json(
-        { message: 'Name must be between 2 and 100 characters' },
-        { status: 400 }
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
-    if (phone && !/^\+?[\d\s-()]+$/.test(phone)) {
-      return Response.json(
-        { message: 'Please enter a valid phone number' },
-        { status: 400 }
-      );
-    }
+    const body = await req.json();
 
     await connectDB();
 
-    // Find user and update
-    const user = await User.findById(session.user.id);
+    // Get current user to validate against role
+    const currentUser = await User.findById(session.user.id);
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
 
-    if (!user) {
-      return Response.json({ message: 'User not found' }, { status: 404 });
+    // Validate the data using your validation schema
+    const validation = validateProfileData(body, currentUser.role);
+    if (!validation.success || !validation.data) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: validation.errors[0]?.message || 'Validation failed',
+          details: validation.errors,
+        },
+        { status: 400 }
+      );
     }
 
     // Update allowed fields
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (phone !== undefined) updateData.phone = phone;
-    if (department !== undefined) updateData.department = department;
-    if (specialization !== undefined)
-      updateData.specialization = specialization;
-    if (address !== undefined) updateData.address = address;
-    if (bio !== undefined) updateData.bio = bio;
+    const updateData: any = {
+      name: validation.data.name,
+      phone: validation.data.phone || null,
+      department: validation.data.department || null,
+      specialization: validation.data.specialization || null,
+      address: validation.data.address || null,
+      bio: validation.data.bio || null,
+      updatedAt: new Date(),
+    };
 
     const updatedUser = await User.findByIdAndUpdate(
       session.user.id,
@@ -79,30 +109,52 @@ export async function PUT(req: NextRequest) {
       { new: true, runValidators: true }
     ).select('-password');
 
-    return Response.json(
-      {
-        message: 'Profile updated successfully',
-        user: updatedUser.toJSON(),
+    if (!updatedUser) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: updatedUser._id.toString(),
+        name: updatedUser.name,
+        email: updatedUser.email,
+        image: updatedUser.image,
+        phone: updatedUser.phone,
+        department: updatedUser.department,
+        specialization: updatedUser.specialization,
+        address: updatedUser.address,
+        bio: updatedUser.bio,
+        role: updatedUser.role,
+        emailVerified: updatedUser.emailVerified,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
       },
-      { status: 200 }
-    );
+      message: 'Profile updated successfully',
+    });
   } catch (error: any) {
     console.error('Profile update error:', error);
 
     if (error.name === 'ValidationError') {
-      return Response.json(
-        { message: 'Validation error', error: error.errors },
+      return NextResponse.json(
+        { success: false, error: 'Validation error', details: error.errors },
         { status: 400 }
       );
     }
 
     if (error.code === 11000) {
-      return Response.json(
-        { message: 'Email already exists' },
+      return NextResponse.json(
+        { success: false, error: 'Email already exists' },
         { status: 409 }
       );
     }
 
-    return Response.json({ message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

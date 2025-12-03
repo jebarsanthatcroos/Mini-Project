@@ -143,20 +143,33 @@ export default function SignUpForm({
   return (
     <form className='space-y-6' onSubmit={handleSubmit(onSubmit)} noValidate>
       {/* Name Field */}
-      <NameField register={register} error={errors.name} value={nameValue} />
+      <NameField<SignUpFormData>
+        register={register}
+        error={errors.name}
+        value={nameValue}
+      />
 
       {/* Email Field */}
-      <EmailField register={register} error={errors.email} value={emailValue} />
+      <EmailField<SignUpFormData>
+        register={register}
+        error={errors.email}
+        value={emailValue}
+        placeholder='Enter your email address'
+        label='Email Address'
+      />
 
       {/* Password Field */}
-      <PasswordField
+      <PasswordField<SignUpFormData>
         register={register}
         error={errors.password}
         value={passwordValue}
+        placeholder='Create a strong password'
+        label='Password'
+        showForgotPassword={false}
       />
 
       {/* Confirm Password Field */}
-      <ConfirmPasswordField
+      <ConfirmPasswordField<SignUpFormData>
         register={register}
         error={errors.confirmPassword}
         value={confirmPasswordValue}
@@ -169,6 +182,7 @@ export default function SignUpForm({
         disabled={!isDirty || !isValid}
         loadingText='Creating Account...'
         defaultText='Create Account'
+        buttonType='signup'
       />
     </form>
   );
