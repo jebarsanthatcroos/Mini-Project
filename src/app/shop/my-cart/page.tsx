@@ -122,7 +122,7 @@ export default function MyCartPage() {
 
       console.log('Sending checkout data:', checkoutData);
 
-      const response = await fetch(`${apiUrl}/api/check_out`, {
+      const response = await fetch(`${apiUrl}/check_out`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
