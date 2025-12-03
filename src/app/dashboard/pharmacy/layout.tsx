@@ -1,7 +1,8 @@
+/* eslint-disable no-undef */
 import type { Metadata } from 'next';
-import PharmacistHeader from '@/components/Pharmacis/PharmacistHeader';
+
 import Footer from '@/components/Footer';
-import PharmacistSidebar from '@/components/Pharmacis/PharmacistSidebar';
+import PharmacistSidebar from '@/components/Pharmacis/Sidebar/Sidebar';
 
 export const metadata: Metadata = {
   title: 'Pharmacy Management System',
@@ -12,14 +13,13 @@ export const metadata: Metadata = {
 export default function PharmacistLayout({
   children,
 }: {
-  // eslint-disable-next-line no-undef
   children: React.ReactNode;
 }) {
   return (
     <div className='flex h-screen bg-gray-50'>
+      {/* Client-side sidebar will mount after hydration */}
       <PharmacistSidebar />
       <div className='flex-1 flex flex-col overflow-hidden'>
-        <PharmacistHeader />
         <main className='flex-1 overflow-auto p-6'>
           {children}
           <Footer />

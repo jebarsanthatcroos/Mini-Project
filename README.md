@@ -15,7 +15,7 @@ PUT /api/patients/[id]/restore - Restore patient
 
 GET /api/patients/stats - Get patient statistics
 
-/api/patients/check?email=jebarsanthatcroos@gmail.com&nic=200121901656
+/api/patients/check?email=jebarsanthatcroos@gmail.com&nic=200121900000
 
 GET /api/patients/search - Search patients
 
