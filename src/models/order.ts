@@ -11,8 +11,8 @@ export interface IOrderItem {
 
 export interface IOrder {
   orderNumber: string;
-  customer: Types.ObjectId;
-  pharmacy: Types.ObjectId;
+  customer?: Types.ObjectId; // Optional for guest orders
+  pharmacy?: Types.ObjectId; // Optional - extracted from products
   items: IOrderItem[];
   totalAmount: number;
   status:
@@ -42,7 +42,7 @@ export interface IOrder {
   prescriptionImages?: string[];
   stripeSessionId?: string;
   stripePaymentIntentId?: string;
-  createdBy: Types.ObjectId;
+  createdBy?: Types.ObjectId; // Optional for guest orders
   updatedBy?: Types.ObjectId;
 }
 
@@ -99,12 +99,12 @@ const OrderSchema = new Schema<IOrderDocument, IOrderModel>(
     customer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // ✅ Changed to false for guest orders
     },
     pharmacy: {
       type: Schema.Types.ObjectId,
       ref: 'Pharmacy',
-      required: true,
+      required: false, // ✅ Changed to false - extracted from products
     },
     items: [OrderItemSchema],
     totalAmount: {
@@ -208,7 +208,7 @@ const OrderSchema = new Schema<IOrderDocument, IOrderModel>(
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // ✅ Changed to false for guest orders
     },
     updatedBy: {
       type: Schema.Types.ObjectId,
@@ -271,7 +271,7 @@ OrderSchema.statics.findByCustomer = function (
 ): Promise<IOrderDocument[]> {
   return this.find({ customer: customerId })
     .populate('pharmacy', 'name address phone')
-    .populate('items.product', 'name images')
+    .populate('items.product', 'name image')
     .sort({ createdAt: -1 })
     .exec();
 };
@@ -289,10 +289,12 @@ OrderSchema.statics.findByPharmacy = function (
 // Instance Methods
 OrderSchema.methods.updateStatus = async function (
   status: IOrder['status'],
-  updatedBy: Types.ObjectId
+  updatedBy?: Types.ObjectId
 ): Promise<IOrderDocument> {
   this.status = status;
-  this.updatedBy = updatedBy;
+  if (updatedBy) {
+    this.updatedBy = updatedBy;
+  }
   return this.save();
 };
 

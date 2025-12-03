@@ -10,14 +10,30 @@ interface Product {
 }
 
 export default function ProductCard({ product }: { product: Product }) {
+  // Normalize image to always be an array (same pattern as ProductImagesGallery)
+  const imageArray: string[] = Array.isArray(product.image)
+    ? product.image.length > 0
+      ? product.image
+      : ['/placeholder-medicine.jpg']
+    : product.image
+      ? [product.image]
+      : ['/placeholder-medicine.jpg'];
+
+  const imageSrc = imageArray[0];
+
   return (
-    <Link href={`/products/${product._id}/review`}>
+    <Link href={`/shop/pharmacy/${product._id}/`}>
       <div className='border rounded-lg overflow-hidden hover:shadow-lg transition'>
-        <div className='bg-gray-100'>
+        <div className='relative bg-gray-100 h-48 w-full'>
           <Image
-            src={product.image[0]}
-            alt={product.name || 'products'}
-            className='w-full h-48 object-cover'
+            src={imageSrc}
+            fill
+            className='object-contain p-4'
+            alt={product.name || 'product'}
+            sizes='(max-width: 768px) 100vw, 33vw'
+            onError={e => {
+              e.currentTarget.src = '/placeholder-medicine.jpg';
+            }}
           />
         </div>
         <div className='p-4'>

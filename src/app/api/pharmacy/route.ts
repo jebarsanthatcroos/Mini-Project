@@ -13,26 +13,6 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-// Helper function to serialize pharmacy data
-const serializePharmacy = (pharmacy: any) => {
-  return {
-    ...pharmacy,
-    id: pharmacy._id?.toString(),
-    _id: undefined,
-    __v: undefined,
-    createdBy: pharmacy.createdBy
-      ? {
-          id: pharmacy.createdBy._id?.toString(),
-          name: pharmacy.createdBy.name,
-          email: pharmacy.createdBy.email,
-          role: pharmacy.createdBy.role,
-        }
-      : pharmacy.createdBy,
-    createdAt: pharmacy.createdAt,
-    updatedAt: pharmacy.updatedAt,
-  };
-};
-
 // GET - Fetch all pharmacies with pagination and filtering
 export async function GET(request: NextRequest): Promise<Response> {
   try {
@@ -70,17 +50,12 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     // Execute query with population
-    const pharmaciesRaw = await Pharmacy.find(query)
+    const pharmacies = await Pharmacy.find(query)
       .populate('createdBy', 'name email role')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
-
-    // Properly serialize the data
-    const pharmacies = pharmaciesRaw.map(pharmacy =>
-      serializePharmacy(pharmacy)
-    );
 
     const total = await Pharmacy.countDocuments(query);
 
@@ -199,7 +174,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         city: body.address.city.trim(),
         state: body.address.state.trim(),
         zipCode: body.address.zipCode.trim(),
-        country: body.address.country || 'Sri Lanka',
+        country: body.address.country || 'US',
       },
       contact: {
         phone: body.contact.phone.trim(),
@@ -236,13 +211,9 @@ export async function POST(request: NextRequest): Promise<Response> {
     // Populate the createdBy field for response
     await newPharmacy.populate('createdBy', 'name email role');
 
-    // Convert to plain object and serialize properly
-    const pharmacyObject = newPharmacy.toObject();
-    const serializedPharmacy = serializePharmacy(pharmacyObject);
-
-    const response: ApiResponse<typeof serializedPharmacy> = {
+    const response: ApiResponse<typeof newPharmacy> = {
       success: true,
-      data: serializedPharmacy,
+      data: newPharmacy,
       message: 'Pharmacy created successfully',
     };
 
