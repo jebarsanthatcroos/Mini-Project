@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/Navbar/Navbar';
 import Footer from '../components/Footer';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {

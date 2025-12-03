@@ -1,22 +1,19 @@
-'use client'; // Mark this component as a Client Component
+'use client';
 
 import { motion, useAnimation } from 'framer-motion';
 import { useEffect } from 'react';
-import Logo from '@/components/Logo'; // Ensure this path is correct
-import { initializeNotFoundEffects } from './notFoundEffects'; // Import the script
+import Logo from '@/components/Logo';
+import { initializeNotFoundEffects } from './notFoundEffects';
 import Link from 'next/link';
 
 export default function NotFound() {
-  // Animation controls for Framer Motion
   const ufoControls = useAnimation();
   const textControls = useAnimation();
   const beamControls = useAnimation();
 
-  // Initialize effects on component mount
   useEffect(() => {
     const cleanup = initializeNotFoundEffects();
 
-    // Trigger animations when the component mounts
     ufoControls.start({
       y: [0, -20, 0],
       transition: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
@@ -34,7 +31,7 @@ export default function NotFound() {
       transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
     });
 
-    return cleanup; // Cleanup on unmount
+    return cleanup;
   }, [ufoControls, textControls, beamControls]);
 
   return (
