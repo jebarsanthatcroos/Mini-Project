@@ -18,7 +18,7 @@ GET /api/patients/stats - Get patient statistics
 /api/patients/check?email=jebarsanthatcroos@gmail.com&nic=200121900000
 
 GET /api/patients/search - Search patients
-
+GET /api/receptionists?available=true
 i would like to ask to ask you to differentite the components
 
 ## Getting Started
