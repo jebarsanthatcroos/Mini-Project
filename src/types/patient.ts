@@ -1,4 +1,3 @@
-// types/patient.ts
 export interface Address {
   street: string;
   city?: string;
