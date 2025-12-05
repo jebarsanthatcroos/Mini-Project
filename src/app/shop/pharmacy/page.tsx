@@ -27,28 +27,28 @@ export default function ProductList() {
       // Simple endpoint - always use relative path
       const endpoint = '/api/products/user?all=true';
 
-      console.log('🔄 Fetching products from:', endpoint);
+      console.log('Fetching products from:', endpoint);
 
       const response = await fetch(endpoint, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        cache: 'no-store', // Prevent caching issues
+        cache: 'no-store',
       });
 
       console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error:', errorText);
+        console.error(' API Error:', errorText);
         throw new Error(
           `API returned ${response.status}: ${response.statusText}`
         );
       }
 
       const data = await response.json();
-      console.log('📦 API Response:', data);
+      console.log('API Response:', data);
 
       if (!data.success) {
         throw new Error(data.message || 'API request failed');
@@ -57,12 +57,12 @@ export default function ProductList() {
       const productsArray = extractProductsFromResponse(data);
 
       if (!Array.isArray(productsArray)) {
-        console.error('❌ Products is not an array:', productsArray);
+        console.error('Products is not an array:', productsArray);
         throw new Error('Invalid response format');
       }
 
       if (productsArray.length === 0) {
-        console.warn('⚠️ No products found in response');
+        console.warn('No products found in response');
         setProducts([]);
         setLoading(false);
         return;
@@ -71,11 +71,11 @@ export default function ProductList() {
       const normalizedProducts = normalizeProducts(productsArray);
       const uniqueProducts = deduplicateProducts(normalizedProducts);
 
-      console.log('✅ Successfully loaded', uniqueProducts.length, 'products');
+      console.log(' Successfully loaded', uniqueProducts.length, 'products');
       setProducts(uniqueProducts);
       setLoading(false);
     } catch (err) {
-      console.error('❌ Fetch error:', err);
+      console.error('Fetch error:', err);
       setError(
         'Failed to fetch products: ' +
           (err instanceof Error ? err.message : 'Unknown error')
