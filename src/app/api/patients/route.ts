@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
@@ -7,21 +6,30 @@ import User from '@/models/User';
 import Patient from '@/models/Patient';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// GET /api/patients - Get all patients with filtering and pagination
+// GET /api/patients - Get all patients with filtering, pagination, and search
 export async function GET(request: NextRequest) {
   try {
+    console.log('=== Starting Patient Fetch ===');
+
+    // Check authentication
     const session = await getServerSession(authOptions);
+    console.log('Session user:', session?.user?.email);
 
     if (!session || !session.user) {
+      console.log('No session found');
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    // Connect to database
     await connectDB();
+    console.log('Database connected');
 
+    // Get user
     const user = await User.findOne({ email: session.user.email });
+    console.log('Found user:', user?.email, 'Role:', user?.role);
 
     if (!user) {
       return NextResponse.json(
@@ -39,20 +47,62 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get query parameters
     const { searchParams } = new URL(request.url);
+
+    // Pagination parameters
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+
+    // Filter parameters
     const search = searchParams.get('search') || '';
     const gender = searchParams.get('gender');
     const bloodType = searchParams.get('bloodType');
-    const ageGroup = searchParams.get('ageGroup');
-    const isActive = searchParams.get('isActive') ?? 'true'; // Default to active patients
+    const maritalStatus = searchParams.get('maritalStatus');
+    const isActive = searchParams.get('isActive');
+    const createdBy = searchParams.get('createdBy');
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
+    // Date range filters
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const dobStart = searchParams.get('dobStart');
+    const dobEnd = searchParams.get('dobEnd');
+
+    console.log('Query parameters:', {
+      page,
+      limit,
+      search,
+      gender,
+      bloodType,
+      maritalStatus,
+      isActive,
+      createdBy,
+      sortBy,
+      sortOrder,
+      startDate,
+      endDate,
+      dobStart,
+      dobEnd,
+    });
+
+    // Build query
     const query: any = {};
 
-    // Filter by active status
-    if (isActive !== null) {
-      query.isActive = isActive === 'true';
+    // Search across multiple fields
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { nic: { $regex: search, $options: 'i' } },
+        { occupation: { $regex: search, $options: 'i' } },
+        { 'address.city': { $regex: search, $options: 'i' } },
+        { 'emergencyContact.name': { $regex: search, $options: 'i' } },
+      ];
     }
 
     // Filter by gender
@@ -65,276 +115,228 @@ export async function GET(request: NextRequest) {
       query.bloodType = bloodType;
     }
 
-    // If user is a doctor, only show their created patients
-    if (user.role === 'DOCTOR') {
+    // Filter by marital status
+    if (maritalStatus && maritalStatus !== 'ALL') {
+      query.maritalStatus = maritalStatus;
+    }
+
+    // Filter by active status
+    if (isActive !== null && isActive !== '') {
+      query.isActive = isActive === 'true';
+    }
+
+    // Filter by creator
+    if (createdBy) {
+      query.createdBy = createdBy;
+    } else if (user.role === 'DOCTOR') {
+      // Doctors can only see their own patients
       query.createdBy = user._id;
     }
 
-    const skip = (page - 1) * limit;
-
-    let patients;
-    let total;
-
-    if (search) {
-      // Search across multiple fields
-      patients = await Patient.find({
-        ...query,
-        $or: [
-          { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } },
-          { nic: { $regex: search, $options: 'i' } },
-        ],
-      })
-        .populate('createdBy', 'name email role')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-      total = await Patient.countDocuments({
-        ...query,
-        $or: [
-          { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } },
-          { nic: { $regex: search, $options: 'i' } },
-        ],
-      });
-    } else {
-      patients = await Patient.find(query)
-        .populate('createdBy', 'name email role')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-      total = await Patient.countDocuments(query);
+    // Date range filter for creation date
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
     }
 
-    // Apply age group filtering in memory if needed
+    // Date range filter for date of birth
+    if (dobStart || dobEnd) {
+      query.dateOfBirth = {};
+      if (dobStart) {
+        query.dateOfBirth.$gte = new Date(dobStart);
+      }
+      if (dobEnd) {
+        query.dateOfBirth.$lte = new Date(dobEnd);
+      }
+    }
+
+    console.log('MongoDB query:', JSON.stringify(query, null, 2));
+
+    // Define sort order
+    const sortOptions: any = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination
+    const [patients, total] = await Promise.all([
+      Patient.find(query)
+        .populate('createdBy', 'firstName lastName email role')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Use lean() for better performance
+      Patient.countDocuments(query),
+    ]);
+
+    console.log(`Found ${patients.length} patients out of ${total} total`);
+
+    // Calculate age for each patient
+    const patientsWithAge = patients.map(patient => {
+      let age = null;
+      if (patient.dateOfBirth) {
+        const today = new Date();
+        const birthDate = new Date(patient.dateOfBirth);
+        age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+      }
+
+      return {
+        ...patient,
+        age,
+        // Format dates for display
+        dateOfBirthFormatted: patient.dateOfBirth
+          ? new Date(patient.dateOfBirth).toISOString().split('T')[0]
+          : null,
+        createdAtFormatted: patient.createdAt
+          ? new Date(patient.createdAt).toISOString()
+          : null,
+        lastVisitFormatted: patient.lastVisit
+          ? new Date(patient.lastVisit).toISOString()
+          : null,
+      };
+    });
+
+    // Optional: Apply age group filtering in memory if needed
+    const ageGroup = searchParams.get('ageGroup');
+    let filteredPatients = patientsWithAge;
+    let filteredTotal = total;
+
     if (ageGroup && ageGroup !== 'ALL') {
-      patients = patients.filter(patient => {
-        const age = patient.calculateAge();
+      filteredPatients = patientsWithAge.filter(patient => {
+        if (!patient.age) return false;
+
         switch (ageGroup) {
+          case 'INFANT':
+            return patient.age < 1;
           case 'CHILD':
-            return age < 18;
+            return patient.age >= 1 && patient.age < 13;
+          case 'TEEN':
+            return patient.age >= 13 && patient.age < 20;
           case 'ADULT':
-            return age >= 18 && age < 65;
+            return patient.age >= 20 && patient.age < 60;
           case 'SENIOR':
-            return age >= 65;
+            return patient.age >= 60;
           default:
             return true;
         }
       });
-      // Update total for age group filtering
-      total = patients.length;
+      filteredTotal = filteredPatients.length;
     }
+
+    // Calculate pagination info
+    const pages = Math.ceil(filteredTotal / limit);
+    const hasNextPage = page < pages;
+    const hasPrevPage = page > 1;
+
+    // Get statistics for the current query
+    const stats = await Patient.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalCount: { $sum: 1 },
+          activeCount: {
+            $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] },
+          },
+          maleCount: {
+            $sum: { $cond: [{ $eq: ['$gender', 'MALE'] }, 1, 0] },
+          },
+          femaleCount: {
+            $sum: { $cond: [{ $eq: ['$gender', 'FEMALE'] }, 1, 0] },
+          },
+          otherGenderCount: {
+            $sum: { $cond: [{ $eq: ['$gender', 'OTHER'] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const statistics = stats[0] || {
+      totalCount: 0,
+      activeCount: 0,
+      maleCount: 0,
+      femaleCount: 0,
+      otherGenderCount: 0,
+    };
+
+    // Get blood type distribution
+    const bloodTypeStats = await Patient.aggregate([
+      { $match: query },
+      { $group: { _id: '$bloodType', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: patients,
+      data: filteredPatients,
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit),
+        total: filteredTotal,
+        pages,
+        hasNextPage,
+        hasPrevPage,
+        nextPage: hasNextPage ? page + 1 : null,
+        prevPage: hasPrevPage ? page - 1 : null,
+      },
+      filters: {
+        search,
+        gender,
+        bloodType,
+        maritalStatus,
+        isActive,
+        ageGroup,
+        startDate,
+        endDate,
+        dobStart,
+        dobEnd,
+        sortBy,
+        sortOrder,
+      },
+      statistics: {
+        total: statistics.totalCount,
+        active: statistics.activeCount,
+        genders: {
+          male: statistics.maleCount,
+          female: statistics.femaleCount,
+          other: statistics.otherGenderCount,
+        },
+        bloodTypes: bloodTypeStats.reduce(
+          (acc, curr) => {
+            acc[curr._id || 'Unknown'] = curr.count;
+            return acc;
+          },
+          {} as Record<string, number>
+        ),
+      },
+      metadata: {
+        requestId: Date.now(),
+        timestamp: new Date().toISOString(),
+        userRole: user.role,
+        queryTime: Date.now(), // Add query execution time
       },
     });
   } catch (error: any) {
     console.error('Error fetching patients:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// POST /api/patients - Create a new patient
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    await connectDB();
-
-    const user = await User.findOne({ email: session.user.email });
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check permissions
-    const allowedRoles = ['ADMIN', 'RECEPTIONIST', 'DOCTOR'];
-    if (!allowedRoles.includes(user.role)) {
-      return NextResponse.json(
-        { success: false, message: 'Forbidden - Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-
-    // Validate required fields
-    const requiredFields = [
-      'firstName',
-      'lastName',
-      'email',
-      'phone',
-      'nic',
-      'dateOfBirth',
-      'gender',
-    ];
-    const missingFields = requiredFields.filter(field => !body[field]);
-
-    if (missingFields.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Missing required fields: ${missingFields.join(', ')}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format
-    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailRegex.test(body.email)) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid email format' },
-        { status: 400 }
-      );
-    }
-
-    // Validate NIC format
-    const nicRegex = /^[0-9]{9}[VX]|[0-9]{12}$/;
-    if (!nicRegex.test(body.nic)) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid NIC format' },
-        { status: 400 }
-      );
-    }
-
-    // Validate date of birth
-    const dob = new Date(body.dateOfBirth);
-    if (dob >= new Date()) {
-      return NextResponse.json(
-        { success: false, message: 'Date of birth must be in the past' },
-        { status: 400 }
-      );
-    }
-
-    // Check if patient with same email or NIC already exists
-    const existingPatient = await Patient.findOne({
-      $or: [
-        { email: body.email.toLowerCase() },
-        { nic: body.nic.toUpperCase() },
-      ],
-    });
-
-    if (existingPatient) {
-      const field =
-        existingPatient.email === body.email.toLowerCase() ? 'email' : 'NIC';
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Patient with this ${field} already exists`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Set createdBy to current user
-    body.createdBy = user._id;
-
-    // Normalize data
-    body.email = body.email.toLowerCase();
-    body.nic = body.nic.toUpperCase();
-
-    // Set default values for nested objects if not provided
-    if (!body.address) {
-      body.address = {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: '',
-      };
-    }
-
-    if (!body.emergencyContact) {
-      body.emergencyContact = {
-        name: '',
-        phone: '',
-        relationship: '',
-      };
-    }
-
-    if (!body.insurance) {
-      body.insurance = {
-        provider: '',
-        policyNumber: '',
-        groupNumber: '',
-        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      };
-    }
-
-    // Create the patient
-    const patient = await Patient.create(body);
-
-    // Populate createdBy field in response
-    const populatedPatient = await Patient.findById(patient._id).populate(
-      'createdBy',
-      'name email role'
-    );
+    console.error('Error stack:', error.stack);
 
     return NextResponse.json(
       {
-        success: true,
-        message: 'Patient created successfully',
-        data: populatedPatient,
+        success: false,
+        message: 'Failed to fetch patients',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
       },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error('Error creating patient:', error);
-
-    // Handle duplicate key errors
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Patient with this ${field} already exists`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((err: any) => err.message);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Validation failed',
-          errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

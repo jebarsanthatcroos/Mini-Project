@@ -1,303 +1,26 @@
-// ============================================
-// FILE 1: validation/patientSchema.ts
-// ============================================
-import { z, ZodError, ZodIssue } from 'zod';
+'use client';
 
-// Address Schema
-export const addressSchema = z.object({
-  street: z
-    .string()
-    .min(1, 'Street is required')
-    .max(200, 'Street is too long'),
-  city: z.string().min(1, 'City is required').max(100, 'City is too long'),
-  state: z.string().min(1, 'State is required').max(100, 'State is too long'),
-  zipCode: z
-    .string()
-    .min(1, 'Zip code is required')
-    .max(20, 'Zip code is too long'),
-  country: z
-    .string()
-    .min(1, 'Country is required')
-    .max(100, 'Country is too long'),
-});
-
-// Emergency Contact Schema
-export const emergencyContactSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Emergency contact name is required')
-    .max(100, 'Name is too long'),
-  phone: z
-    .string()
-    .min(1, 'Emergency contact phone is required')
-    .regex(/^[0-9+\-() ]+$/, 'Invalid phone number format'),
-  relationship: z
-    .string()
-    .min(1, 'Relationship is required')
-    .max(50, 'Relationship is too long'),
-  email: z.string().email('Invalid email format').optional().or(z.literal('')),
-});
-
-// Insurance Schema
-export const insuranceSchema = z.object({
-  provider: z.string().optional().or(z.literal('')),
-  policyNumber: z.string().optional().or(z.literal('')),
-  groupNumber: z.string().optional().or(z.literal('')),
-  validUntil: z.union([z.date(), z.string()]).optional(),
-});
-
-// Main Patient Form Schema
-export const patientFormSchema = z.object({
-  // Basic Information
-  firstName: z
-    .string()
-    .min(1, 'First name is required')
-    .max(50, 'First name is too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'First name contains invalid characters'),
-
-  lastName: z
-    .string()
-    .min(1, 'Last name is required')
-    .max(50, 'Last name is too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Last name contains invalid characters'),
-
-  nic: z
-    .string()
-    .min(1, 'NIC number is required')
-    .max(20, 'NIC number is too long')
-    .regex(/^[0-9A-Za-z]+$/, 'NIC must contain only letters and numbers'),
-
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Invalid email format')
-    .max(100, 'Email is too long'),
-
-  phone: z
-    .string()
-    .min(1, 'Phone number is required')
-    .regex(/^[0-9+\-() ]+$/, 'Invalid phone number format')
-    .min(10, 'Phone number is too short')
-    .max(20, 'Phone number is too long'),
-
-  dateOfBirth: z
-    .string()
-    .min(1, 'Date of birth is required')
-    .refine(date => {
-      const birthDate = new Date(date);
-      const today = new Date();
-      return birthDate <= today;
-    }, 'Date of birth cannot be in the future')
-    .refine(date => {
-      const birthDate = new Date(date);
-      const minDate = new Date();
-      minDate.setFullYear(minDate.getFullYear() - 150);
-      return birthDate >= minDate;
-    }, 'Invalid date of birth'),
-
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER'], {
-    message: 'Please select a valid gender',
-  }),
-
-  // Optional Medical Information
-  bloodType: z
-    .enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
-    .optional()
-    .or(z.literal('')),
-
-  height: z
-    .number()
-    .min(0, 'Height must be positive')
-    .max(300, 'Height must be realistic')
-    .optional(),
-
-  weight: z
-    .number()
-    .min(0, 'Weight must be positive')
-    .max(500, 'Weight must be realistic')
-    .optional(),
-
-  medicalHistory: z
-    .string()
-    .max(2000, 'Medical history is too long')
-    .optional()
-    .or(z.literal('')),
-
-  allergies: z
-    .array(z.string().max(100, 'Allergy name is too long'))
-    .optional()
-    .default([]),
-
-  medications: z
-    .array(z.string().max(100, 'Medication name is too long'))
-    .optional()
-    .default([]),
-
-  // Nested Objects (optional)
-  address: z
-    .union([
-      addressSchema,
-      z.object({
-        street: z.string(),
-        city: z.string(),
-        state: z.string(),
-        zipCode: z.string(),
-        country: z.string(),
-      }),
-    ])
-    .optional(),
-
-  emergencyContact: z
-    .union([
-      emergencyContactSchema,
-      z.object({
-        name: z.string(),
-        phone: z.string(),
-        relationship: z.string(),
-        email: z.string().optional(),
-      }),
-    ])
-    .optional(),
-
-  insurance: insuranceSchema.optional(),
-
-  // Status
-  isActive: z.boolean().optional().default(true),
-});
-
-// Type inference
-export type PatientFormSchemaType = z.infer<typeof patientFormSchema>;
-
-// Validation helper function with proper error handling
-export const validatePatientForm = (data: unknown) => {
-  try {
-    const validated = patientFormSchema.parse(data);
-    return {
-      success: true as const,
-      data: validated,
-      errors: null,
-    };
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const formattedErrors: Record<string, string> = {};
-
-      (error.issues as ZodIssue[]).forEach((err: ZodIssue) => {
-        const path = err.path.join('.');
-        formattedErrors[path] = err.message;
-      });
-
-      return {
-        success: false as const,
-        data: null,
-        errors: formattedErrors,
-      };
-    }
-
-    return {
-      success: false as const,
-      data: null,
-      errors: { _form: 'Validation failed' },
-    };
-  }
-};
-
-// Safe parse wrapper for React forms
-export const safeParsePatientForm = (data: unknown) => {
-  return patientFormSchema.safeParse(data);
-};
-
-// Partial validation for individual fields with proper type handling
-export const validateField = (fieldName: string, value: unknown) => {
-  try {
-    const fieldSchema =
-      patientFormSchema.shape[
-        fieldName as keyof typeof patientFormSchema.shape
-      ];
-
-    if (fieldSchema) {
-      fieldSchema.parse(value);
-      return {
-        valid: true as const,
-        error: null,
-      };
-    }
-
-    return {
-      valid: false as const,
-      error: 'Unknown field',
-    };
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const firstError = (error.issues as ZodIssue[])[0];
-      return {
-        valid: false as const,
-        error: firstError?.message || 'Validation failed',
-      };
-    }
-
-    return {
-      valid: false as const,
-      error: 'Validation failed',
-    };
-  }
-};
-
-// Additional utility: Get all field errors as an object
-export const getFieldErrors = (error: ZodError): Record<string, string[]> => {
-  const errors: Record<string, string[]> = {};
-
-  (error.issues as ZodIssue[]).forEach((err: ZodIssue) => {
-    const path = err.path.join('.');
-    if (!errors[path]) {
-      errors[path] = [];
-    }
-    errors[path].push(err.message);
-  });
-
-  return errors;
-};
-
-// Additional utility: Validate specific nested fields
-export const validateNestedField = (
-  schema: z.ZodTypeAny,
-  value: unknown
-): { valid: boolean; error: string | null } => {
-  try {
-    schema.parse(value);
-    return { valid: true, error: null };
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const firstError = (error.issues as ZodIssue[])[0];
-      return {
-        valid: false,
-        error: firstError?.message || 'Validation failed',
-      };
-    }
-    return { valid: false, error: 'Validation failed' };
-  }
-};
-
-// Export schemas for nested validation
-export const schemas = {
-  address: addressSchema,
-  emergencyContact: emergencyContactSchema,
-  insurance: insuranceSchema,
-  patientForm: patientFormSchema,
-} as const;
-
-// ============================================
-// FILE 2: components/PatientBasicInfoForm.tsx
-// ============================================
 import React from 'react';
-import { PatientFormData } from '@/types/patient';
+import { FiAlertCircle } from 'react-icons/fi';
+import {
+  Gender,
+  MaritalStatus,
+  IPatientFormData,
+} from '@/app/(page)/Receptionist/patients/new/page';
 
 interface PatientBasicInfoFormProps {
-  formData: PatientFormData;
+  formData: IPatientFormData;
   formErrors: Record<string, string>;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onBlur: (
+    e: React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => void;
 }
 
 const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
@@ -306,13 +29,37 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
   onChange,
   onBlur,
 }) => {
+  const genderOptions: { value: Gender; label: string }[] = [
+    { value: 'MALE', label: 'Male' },
+    { value: 'FEMALE', label: 'Female' },
+    { value: 'OTHER', label: 'Other' },
+  ];
+
+  const maritalStatusOptions: { value: MaritalStatus; label: string }[] = [
+    { value: 'SINGLE', label: 'Single' },
+    { value: 'MARRIED', label: 'Married' },
+    { value: 'DIVORCED', label: 'Divorced' },
+    { value: 'WIDOWED', label: 'Widowed' },
+  ];
+
+  const languageOptions = [
+    { value: 'en', label: 'English' },
+    { value: 'si', label: 'Sinhala' },
+    { value: 'ta', label: 'Tamil' },
+    { value: 'hi', label: 'Hindi' },
+    { value: 'fr', label: 'French' },
+    { value: 'es', label: 'Spanish' },
+    { value: 'other', label: 'Other' },
+  ];
+
   return (
     <div className='space-y-6'>
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {/* First Name */}
         <div>
           <label
             htmlFor='firstName'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             First Name *
           </label>
@@ -323,28 +70,27 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.firstName}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.firstName
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            placeholder='Enter first name'
-            aria-invalid={!!formErrors.firstName}
-            aria-describedby={
-              formErrors.firstName ? 'firstName-error' : undefined
-            }
+            placeholder='John'
+            required
           />
           {formErrors.firstName && (
-            <p id='firstName-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.firstName}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.firstName}</span>
+            </div>
           )}
         </div>
 
+        {/* Last Name */}
         <div>
           <label
             htmlFor='lastName'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Last Name *
           </label>
@@ -355,32 +101,63 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.lastName}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.lastName
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            placeholder='Enter last name'
-            aria-invalid={!!formErrors.lastName}
-            aria-describedby={
-              formErrors.lastName ? 'lastName-error' : undefined
-            }
+            placeholder='Doe'
+            required
           />
           {formErrors.lastName && (
-            <p id='lastName-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.lastName}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.lastName}</span>
+            </div>
           )}
         </div>
-      </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {/* NIC */}
+        <div>
+          <label
+            htmlFor='nic'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
+            NIC/Passport Number *
+          </label>
+          <input
+            type='text'
+            id='nic'
+            name='nic'
+            value={formData.nic}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.nic
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder='123456789V'
+            required
+          />
+          {formErrors.nic && (
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.nic}</span>
+            </div>
+          )}
+          <p className='mt-1 text-xs text-gray-500'>
+            National Identity Card or Passport number
+          </p>
+        </div>
+
+        {/* Email */}
         <div>
           <label
             htmlFor='email'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
-            Email Address *
+            Email Address
           </label>
           <input
             type='email'
@@ -389,26 +166,26 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.email}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.email
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            placeholder='Enter email address'
-            aria-invalid={!!formErrors.email}
-            aria-describedby={formErrors.email ? 'email-error' : undefined}
+            placeholder='john.doe@example.com'
           />
           {formErrors.email && (
-            <p id='email-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.email}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.email}</span>
+            </div>
           )}
         </div>
 
+        {/* Phone */}
         <div>
           <label
             htmlFor='phone'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Phone Number *
           </label>
@@ -419,28 +196,27 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.phone}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.phone
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            placeholder='Enter phone number'
-            aria-invalid={!!formErrors.phone}
-            aria-describedby={formErrors.phone ? 'phone-error' : undefined}
+            placeholder='+94 77 123 4567'
+            required
           />
           {formErrors.phone && (
-            <p id='phone-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.phone}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.phone}</span>
+            </div>
           )}
         </div>
-      </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+        {/* Date of Birth */}
         <div>
           <label
             htmlFor='dateOfBirth'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Date of Birth *
           </label>
@@ -451,27 +227,26 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.dateOfBirth}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.dateOfBirth
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            aria-invalid={!!formErrors.dateOfBirth}
-            aria-describedby={
-              formErrors.dateOfBirth ? 'dateOfBirth-error' : undefined
-            }
+            required
           />
           {formErrors.dateOfBirth && (
-            <p id='dateOfBirth-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.dateOfBirth}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.dateOfBirth}</span>
+            </div>
           )}
         </div>
 
+        {/* Gender */}
         <div>
           <label
             htmlFor='gender'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Gender *
           </label>
@@ -481,55 +256,177 @@ const PatientBasicInfoForm: React.FC<PatientBasicInfoFormProps> = ({
             value={formData.gender}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
               formErrors.gender
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            aria-invalid={!!formErrors.gender}
-            aria-describedby={formErrors.gender ? 'gender-error' : undefined}
+            required
           >
-            <option value=''>Select Gender</option>
-            <option value='MALE'>Male</option>
-            <option value='FEMALE'>Female</option>
-            <option value='OTHER'>Other</option>
+            <option value=''>Select gender</option>
+            {genderOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           {formErrors.gender && (
-            <p id='gender-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.gender}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.gender}</span>
+            </div>
           )}
         </div>
 
+        {/* Marital Status */}
         <div>
           <label
-            htmlFor='nic'
-            className='block text-sm font-medium text-gray-700'
+            htmlFor='maritalStatus'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
-            NIC Number *
+            Marital Status
+          </label>
+          <select
+            id='maritalStatus'
+            name='maritalStatus'
+            value={formData.maritalStatus || ''}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.maritalStatus
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
+          >
+            <option value=''>Select marital status</option>
+            {maritalStatusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {formErrors.maritalStatus && (
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.maritalStatus}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Occupation */}
+        <div>
+          <label
+            htmlFor='occupation'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
+            Occupation
           </label>
           <input
             type='text'
-            id='nic'
-            name='nic'
-            value={formData.nic}
+            id='occupation'
+            name='occupation'
+            value={formData.occupation || ''}
             onChange={onChange}
             onBlur={onBlur}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.nic
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.occupation
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300'
             }`}
-            placeholder='Enter NIC number'
-            aria-invalid={!!formErrors.nic}
-            aria-describedby={formErrors.nic ? 'nic-error' : undefined}
+            placeholder='Software Engineer'
           />
-          {formErrors.nic && (
-            <p id='nic-error' className='mt-1 text-sm text-red-600'>
-              {formErrors.nic}
-            </p>
+          {formErrors.occupation && (
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.occupation}</span>
+            </div>
           )}
         </div>
+
+        {/* Preferred Language */}
+        <div>
+          <label
+            htmlFor='preferredLanguage'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
+            Preferred Language
+          </label>
+          <select
+            id='preferredLanguage'
+            name='preferredLanguage'
+            value={formData.preferredLanguage || ''}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.preferredLanguage
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
+          >
+            <option value=''>Select preferred language</option>
+            {languageOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {formErrors.preferredLanguage && (
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.preferredLanguage}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Active Status */}
+      <div className='flex items-center mt-4'>
+        <input
+          type='checkbox'
+          id='isActive'
+          name='isActive'
+          checked={formData.isActive !== undefined ? formData.isActive : true}
+          onChange={onChange}
+          className='h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
+        />
+        <label htmlFor='isActive' className='ml-2 block text-sm text-gray-900'>
+          Patient is active
+        </label>
+        <p className='ml-2 text-xs text-gray-500'>
+          Uncheck if patient is inactive (e.g., moved, deceased)
+        </p>
+      </div>
+
+      {/* Last Visit (optional) */}
+      <div className='mt-4'>
+        <label
+          htmlFor='lastVisit'
+          className='block text-sm font-medium text-gray-700 mb-1'
+        >
+          Last Visit Date (Optional)
+        </label>
+        <input
+          type='date'
+          id='lastVisit'
+          name='lastVisit'
+          value={formData.lastVisit || ''}
+          onChange={onChange}
+          onBlur={onBlur}
+          className={`block w-full max-w-xs px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            formErrors.lastVisit
+              ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+              : 'border-gray-300'
+          }`}
+        />
+        {formErrors.lastVisit && (
+          <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+            <FiAlertCircle className='w-4 h-4' />
+            <span>{formErrors.lastVisit}</span>
+          </div>
+        )}
+        <p className='mt-1 text-xs text-gray-500'>
+          Leave blank if this is the patient&apos;s first visit
+        </p>
       </div>
     </div>
   );

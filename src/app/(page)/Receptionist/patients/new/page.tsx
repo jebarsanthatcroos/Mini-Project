@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
-import { PatientFormData } from '@/types/patient';
-import NewPatientHeader from '@/components/Patient/NewPatientHeader';
+import NewPatientHeader from '@/components//Patient/NewPatientHeader';
 import PatientBasicInfoForm from '@/components/Patient/forms/PatientBasicInfoForm';
 import PatientAddressForm from '@/components/Patient/forms/AddressForm';
 import PatientEmergencyContactForm from '@/components/Patient/forms/EmergencyContactForm';
@@ -14,48 +14,110 @@ import PatientFormActions from '@/components/Patient/forms/PatientFormActions';
 import PatientFormSummary from '@/components/Patient/forms/PatientFormSummary';
 import { validatePatientForm, validateField } from '@/validation/patientSchema';
 
-const initialFormData: PatientFormData = {
+// Define interfaces based on your IPatient structure
+export interface IAddress {
+  street: string;
+  state: string;
+  city: string;
+  zipCode?: string;
+  country: string;
+}
+
+export interface IEmergencyContact {
+  name: string;
+  phone: string;
+  relationship: string;
+  email?: string;
+}
+
+export interface IInsurance {
+  provider?: string;
+  policyNumber?: string;
+  groupNumber?: string;
+  validUntil?: Date;
+}
+
+export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
+
+export interface IPatientFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nic: string;
+  dateOfBirth: string; // Using string for form input, will convert to Date for API
+  gender: Gender;
+  address?: IAddress;
+  emergencyContact?: IEmergencyContact;
+  medicalHistory?: string;
+  allergies?: string[];
+  medications?: string[];
+  insurance?: IInsurance;
+  bloodType?: BloodType;
+  height?: number;
+  weight?: number;
+  isActive?: boolean;
+  maritalStatus?: MaritalStatus;
+  occupation?: string;
+  preferredLanguage?: string;
+  lastVisit?: string; // Using string for form input
+}
+
+const initialAddress: IAddress = {
+  street: '',
+  state: '',
+  city: '',
+  zipCode: '',
+  country: '',
+};
+
+const initialEmergencyContact: IEmergencyContact = {
+  name: '',
+  phone: '',
+  relationship: '',
+  email: '',
+};
+
+const initialInsurance: IInsurance = {
+  provider: '',
+  policyNumber: '',
+  groupNumber: '',
+  validUntil: new Date(),
+};
+
+const initialFormData: IPatientFormData = {
   firstName: '',
   lastName: '',
-  nic: '',
   email: '',
   phone: '',
+  nic: '',
   dateOfBirth: '',
   gender: 'OTHER',
-  address: {
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: '',
-  },
-  emergencyContact: {
-    name: '',
-    phone: '',
-    relationship: '',
-    email: '',
-  },
+  address: initialAddress,
+  emergencyContact: initialEmergencyContact,
   medicalHistory: '',
   allergies: [],
   medications: [],
-  insurance: {
-    provider: '',
-    policyNumber: '',
-    groupNumber: '',
-    validUntil: new Date(),
-  },
-  bloodType: '',
+  insurance: initialInsurance,
+  bloodType: undefined,
   height: undefined,
   weight: undefined,
   isActive: true,
+  maritalStatus: undefined,
+  occupation: '',
+  preferredLanguage: '',
+  lastVisit: '',
 };
+
 type FormBlurEvent = React.FocusEvent<
   HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
 >;
 
 export default function NewPatientPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<PatientFormData>(initialFormData);
+  const [formData, setFormData] = useState<IPatientFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -65,7 +127,7 @@ export default function NewPatientPage() {
   const checkExistingPatient = async (
     email: string,
     nic: string
-  ): Promise<{ exists: boolean; field?: string }> => {
+  ): Promise<{ exists: boolean; field?: string; message?: string }> => {
     try {
       const response = await fetch(
         `/api/patients/check?email=${encodeURIComponent(email)}&nic=${encodeURIComponent(nic)}`
@@ -76,39 +138,50 @@ export default function NewPatientPage() {
       return await response.json();
     } catch (error) {
       console.error('Error checking patient:', error);
-      return { exists: false };
+      return { exists: false, message: 'Error checking patient existence' };
     }
   };
 
-  // ✅ Ensure data has required address field
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ensureValidFormData = (data: any): PatientFormData => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const ensureValidFormData = (
+    data: Partial<IPatientFormData>
+  ): IPatientFormData => {
     return {
+      ...initialFormData,
       ...data,
-      address: data.address || {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: '',
+      address: {
+        ...initialAddress,
+        ...(data.address || {}),
       },
-      emergencyContact: data.emergencyContact || {
-        name: '',
-        phone: '',
-        relationship: '',
-        email: '',
+      emergencyContact: {
+        ...initialEmergencyContact,
+        ...(data.emergencyContact || {}),
       },
+      insurance: {
+        ...initialInsurance,
+        ...(data.insurance || {}),
+        validUntil:
+          data.insurance?.validUntil instanceof Date
+            ? data.insurance.validUntil
+            : initialInsurance.validUntil || new Date(),
+      },
+      allergies: data.allergies || [],
+      medications: data.medications || [],
     };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form
     const validationResult = validatePatientForm(formData);
 
     if (!validationResult.success) {
       const errors = validationResult.errors || {};
       setFormErrors(errors);
       setError('Please fix the form errors before submitting.');
+
+      // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
       if (firstErrorField) {
         const element = document.getElementById(firstErrorField);
@@ -120,6 +193,7 @@ export default function NewPatientPage() {
       return;
     }
 
+    // Check for existing patient
     const checkResult = await checkExistingPatient(
       formData.email,
       formData.nic
@@ -141,39 +215,61 @@ export default function NewPatientPage() {
     setSuccess(null);
 
     try {
-      // ✅ Ensure the data has required fields before sending
-      const validatedData = ensureValidFormData(validationResult.data);
+      // Prepare data for API
+      const apiData = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        lastVisit: formData.lastVisit || undefined,
+        address: formData.address?.street ? formData.address : undefined,
+        emergencyContact: formData.emergencyContact?.name
+          ? formData.emergencyContact
+          : undefined,
+        insurance: formData.insurance?.provider
+          ? formData.insurance
+          : undefined,
+        medicalHistory: formData.medicalHistory || undefined,
+        allergies: formData.allergies?.length ? formData.allergies : undefined,
+        medications: formData.medications?.length
+          ? formData.medications
+          : undefined,
+        bloodType: formData.bloodType || undefined,
+        height: formData.height || undefined,
+        weight: formData.weight || undefined,
+        maritalStatus: formData.maritalStatus || undefined,
+        occupation: formData.occupation || undefined,
+        preferredLanguage: formData.preferredLanguage || undefined,
+      };
 
-      console.log('Sending data to API:', validatedData);
-      const response = await fetch('/api/patients', {
+      console.log('Sending data to API:', apiData);
+
+      const response = await fetch('/api/patients/new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(validatedData),
+        body: JSON.stringify(apiData),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.field) {
+        if (result.field) {
           setFormErrors(prev => ({
             ...prev,
-            [errorData.field]: errorData.message,
+            [result.field.toLowerCase()]: result.message,
           }));
-          setError(`Patient with this ${errorData.field} already exists.`);
+          setError(result.message || 'Failed to create patient');
         } else {
-          throw new Error(errorData.message || 'Failed to create patient');
+          throw new Error(result.message || 'Failed to create patient');
         }
         return;
       }
 
-      const result = await response.json();
-
-      if (result.success || result.patient) {
+      if (result.success) {
         setSuccess('Patient created successfully!');
         setFormErrors({});
         setTimeout(() => {
-          router.push('/doctor/patients?success=true');
+          router.push('/Receptionist/patients?success=true');
         }, 2000);
       } else {
         throw new Error(result.message || 'Failed to create patient');
@@ -195,22 +291,38 @@ export default function NewPatientPage() {
   ) => {
     const { name, value, type } = e.target;
 
-    // Handle number inputs
-    if (type === 'number') {
-      const numValue = value === '' ? undefined : Number(value);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setFormData((prev: any) => ({
+    // Handle nested fields
+    if (name.includes('.')) {
+      const [section, field] = name.split('.') as [
+        keyof IPatientFormData,
+        string,
+      ];
+
+      setFormData(prev => ({
         ...prev,
-        [name]: numValue,
+        [section]: {
+          ...(prev[section] as any),
+          [field]: type === 'number' && value !== '' ? Number(value) : value,
+        },
       }));
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setFormData((prev: any) => ({
+      // Handle regular fields
+
+      let processedValue: any = value;
+
+      if (type === 'number') {
+        processedValue = value === '' ? undefined : Number(value);
+      } else if (type === 'checkbox') {
+        processedValue = (e.target as HTMLInputElement).checked;
+      }
+
+      setFormData(prev => ({
         ...prev,
-        [name]: value,
+        [name]: processedValue,
       }));
     }
 
+    // Clear error for this field
     if (formErrors[name]) {
       setFormErrors(prev => {
         const newErrors = { ...prev };
@@ -220,16 +332,16 @@ export default function NewPatientPage() {
     }
   };
 
-  // ✅ Updated to handle all input types including textarea
   const handleBlur = (e: FormBlurEvent) => {
     const { name, value } = e.target;
 
-    // Skip validation for empty optional fields
-    if (!value && !['gender', 'email', 'nic', 'phone'].includes(name)) {
+    if (
+      !value &&
+      !['gender', 'email', 'nic', 'phone', 'bloodType'].includes(name)
+    ) {
       return;
     }
 
-    // Validate individual field
     const result = validateField(name, value);
     if (!result.valid && result.error) {
       setFormErrors(prev => ({
@@ -237,7 +349,6 @@ export default function NewPatientPage() {
         [name]: result.error!,
       }));
     } else {
-      // Clear error if field is now valid
       setFormErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[name];
@@ -249,7 +360,7 @@ export default function NewPatientPage() {
   const handleNestedChange = (
     section: 'address' | 'emergencyContact' | 'insurance',
     field: string,
-    value: string
+    value: string | number | Date
   ) => {
     setFormData(prev => ({
       ...prev,
@@ -259,48 +370,29 @@ export default function NewPatientPage() {
       },
     }));
 
-    // Clear nested field errors
+    // Clear errors for nested field
     const errorKey = `${section}.${field}`;
-    if (formErrors[errorKey] || formErrors[field]) {
-      setFormErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+    setFormErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[errorKey];
+      return newErrors;
+    });
   };
 
   const handleInsuranceDateChange = (value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      insurance: {
-        ...prev.insurance,
-        validUntil: new Date(value),
-      },
-    }));
-
-    // Clear insurance date errors
-    if (formErrors['insurance.validUntil']) {
-      setFormErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors['insurance.validUntil'];
-        return newErrors;
-      });
-    }
+    const dateValue = value ? new Date(value) : new Date();
+    handleNestedChange('insurance', 'validUntil', dateValue);
   };
 
   const handleArrayChange = (
     field: 'allergies' | 'medications',
     value: string[]
   ) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setFormData((prev: any) => ({
+    setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
 
-    // Clear array field errors
     if (formErrors[field]) {
       setFormErrors(prev => {
         const newErrors = { ...prev };
@@ -316,7 +408,7 @@ export default function NewPatientPage() {
         'Are you sure you want to cancel? Any unsaved changes will be lost.'
       )
     ) {
-      router.push('/doctor/patients');
+      router.push('/Receptionist/patients');
     }
   };
 
@@ -338,20 +430,12 @@ export default function NewPatientPage() {
         'phone',
         'dateOfBirth',
         'gender',
+        'maritalStatus',
+        'occupation',
+        'preferredLanguage',
       ],
-      address: [
-        'address.street',
-        'address.city',
-        'address.state',
-        'address.zipCode',
-        'address.country',
-      ],
-      emergency: [
-        'emergencyContact.name',
-        'emergencyContact.phone',
-        'emergencyContact.relationship',
-        'emergencyContact.email',
-      ],
+      address: ['street', 'city', 'state', 'zipCode', 'country'],
+      emergency: ['name', 'phone', 'relationship', 'email'],
       medical: [
         'medicalHistory',
         'allergies',
@@ -359,22 +443,26 @@ export default function NewPatientPage() {
         'bloodType',
         'height',
         'weight',
+        'lastVisit',
       ],
-      insurance: [
-        'insurance.provider',
-        'insurance.policyNumber',
-        'insurance.groupNumber',
-        'insurance.validUntil',
-      ],
+      insurance: ['provider', 'policyNumber', 'groupNumber', 'validUntil'],
     };
 
     const fields = sectionFields[sectionId] || [];
+
     return fields.filter(field => {
-      return (
-        formErrors[field] ||
-        formErrors[field.split('.').pop() || ''] ||
-        formErrors[field.replace('.', '_')]
-      );
+      // Check for direct field errors
+      if (formErrors[field]) return true;
+
+      // Check for nested field errors
+      if (sectionId === 'address' && formErrors[`address.${field}`])
+        return true;
+      if (sectionId === 'emergency' && formErrors[`emergencyContact.${field}`])
+        return true;
+      if (sectionId === 'insurance' && formErrors[`insurance.${field}`])
+        return true;
+
+      return false;
     }).length;
   };
 
@@ -383,9 +471,10 @@ export default function NewPatientPage() {
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
       <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <NewPatientHeader onBack={() => router.push('/doctor/patients')} />
+        <NewPatientHeader
+          onBack={() => router.push('/Receptionist/patients')}
+        />
 
-        {/* Success Message */}
         {success && (
           <div className='mb-6 bg-green-50 border border-green-200 rounded-lg p-4'>
             <div className='flex items-center gap-2 text-green-800'>
@@ -395,7 +484,6 @@ export default function NewPatientPage() {
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className='mb-6 bg-red-50 border border-red-200 rounded-lg p-4'>
             <div className='flex items-center gap-2 text-red-800'>
@@ -422,7 +510,6 @@ export default function NewPatientPage() {
 
         <form onSubmit={handleSubmit}>
           <div className='grid grid-cols-1 lg:grid-cols-4 gap-8'>
-            {/* Sidebar Navigation */}
             <div className='lg:col-span-1'>
               <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
                 <h3 className='text-lg font-medium text-gray-900 mb-4'>
@@ -457,7 +544,6 @@ export default function NewPatientPage() {
 
                 <PatientFormSummary formData={formData} />
 
-                {/* Form Status */}
                 <div className='mt-4 p-3 bg-gray-50 rounded-md'>
                   <div className='text-sm text-gray-600'>
                     <div>
@@ -471,7 +557,6 @@ export default function NewPatientPage() {
               </div>
             </div>
 
-            {/* Main Form Content */}
             <div className='lg:col-span-3'>
               <div className='bg-white rounded-lg shadow-sm border border-gray-200'>
                 <div className='p-6 border-b border-gray-200'>
@@ -522,7 +607,7 @@ export default function NewPatientPage() {
                       formErrors={formErrors}
                       onChange={handleChange}
                       onArrayChange={handleArrayChange}
-                      onBlur={handleBlur} // ✅ FIXED: Added missing onBlur prop
+                      onBlur={handleBlur}
                     />
                   )}
 
@@ -539,7 +624,6 @@ export default function NewPatientPage() {
                   )}
                 </div>
 
-                {/* Form Actions */}
                 <div className='px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg'>
                   <PatientFormActions
                     onCancel={handleCancel}

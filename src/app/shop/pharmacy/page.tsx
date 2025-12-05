@@ -21,24 +21,48 @@ export default function ProductList() {
 
   const fetchProducts = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      console.log('🔄 Fetching products...');
+      setLoading(true);
+      setError(null);
 
-      const response = await fetch(`${apiUrl}/products/user?all=true`);
+      // Simple endpoint - always use relative path
+      const endpoint = '/api/products/user?all=true';
+
+      console.log('Fetching products from:', endpoint);
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      });
+
+      console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(' API Error:', errorText);
         throw new Error(
           `API returned ${response.status}: ${response.statusText}`
         );
       }
 
       const data = await response.json();
-      console.log('📦 API Response:', data);
+      console.log('API Response:', data);
+
+      if (!data.success) {
+        throw new Error(data.message || 'API request failed');
+      }
 
       const productsArray = extractProductsFromResponse(data);
 
-      if (!Array.isArray(productsArray) || productsArray.length === 0) {
-        console.warn('⚠️ No products found in response');
+      if (!Array.isArray(productsArray)) {
+        console.error('Products is not an array:', productsArray);
+        throw new Error('Invalid response format');
+      }
+
+      if (productsArray.length === 0) {
+        console.warn('No products found in response');
         setProducts([]);
         setLoading(false);
         return;
@@ -47,9 +71,11 @@ export default function ProductList() {
       const normalizedProducts = normalizeProducts(productsArray);
       const uniqueProducts = deduplicateProducts(normalizedProducts);
 
+      console.log(' Successfully loaded', uniqueProducts.length, 'products');
       setProducts(uniqueProducts);
       setLoading(false);
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(
         'Failed to fetch products: ' +
           (err instanceof Error ? err.message : 'Unknown error')
@@ -59,20 +85,26 @@ export default function ProductList() {
   };
 
   const extractProductsFromResponse = (data: any): Product[] => {
+    // Handle response where data is directly an array
+    if (Array.isArray(data.data)) {
+      return data.data;
+    }
+
+    // Handle response with nested products
     if (data.success && data.data) {
       if (data.data.products && Array.isArray(data.data.products)) {
         return data.data.products;
-      }
-      if (Array.isArray(data.data)) {
-        return data.data;
       }
       if (typeof data.data === 'object' && data.data.products) {
         return data.data.products;
       }
     }
+
+    // Handle response that's directly an array
     if (Array.isArray(data)) {
       return data;
     }
+
     return [];
   };
 
@@ -80,6 +112,7 @@ export default function ProductList() {
     return productsArray.map(product => ({
       ...product,
       _id: product.id || product._id,
+      id: product.id || product._id,
     }));
   };
 

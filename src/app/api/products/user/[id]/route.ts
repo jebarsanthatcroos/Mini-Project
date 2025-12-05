@@ -11,95 +11,123 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-// Helper function to serialize product data for public users
-const serializeProductForUser = (product: any) => {
-  const productObj = product.toObject ? product.toObject() : product;
-
-  return {
-    id: productObj._id?.toString(),
-    name: productObj.name,
-    description: productObj.description,
-    price: productObj.price,
-    category: productObj.category,
-    image: productObj.image,
-    inStock: productObj.inStock,
-    stockQuantity: productObj.stockQuantity,
-    manufacturer: productObj.manufacturer,
-    requiresPrescription: productObj.requiresPrescription,
-    sku: productObj.sku,
-    pharmacy: productObj.pharmacy
-      ? {
-          id: productObj.pharmacy._id?.toString(),
-          name: productObj.pharmacy.name,
-          address: productObj.pharmacy.address,
-          contact: productObj.pharmacy.contact,
-        }
-      : null,
-    // Add calculated fields
-    availableQuantity:
-      productObj.stockQuantity - (productObj.reservedQuantity || 0),
-    isLowStock:
-      productObj.stockQuantity - (productObj.reservedQuantity || 0) <=
-      (productObj.minStockLevel || 10),
-    createdAt: productObj.createdAt,
-    updatedAt: productObj.updatedAt,
-  };
+const safeToString = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  try {
+    return value.toString();
+  } catch {
+    return '';
+  }
 };
 
-// GET - Fetch a single product by ID for public users (no authentication required)
+const safeToNumber = (value: any, defaultValue: number = 0): number => {
+  const num = Number(value);
+  return isNaN(num) ? defaultValue : num;
+};
+
+const serializeProductForUser = (product: any) => {
+  try {
+    const productObj = product.toObject ? product.toObject() : product;
+
+    let pharmacyData = null;
+    if (productObj.pharmacy) {
+      if (
+        typeof productObj.pharmacy === 'object' &&
+        productObj.pharmacy !== null
+      ) {
+        pharmacyData = {
+          id: safeToString(productObj.pharmacy._id),
+          name: String(productObj.pharmacy.name || ''),
+          address: String(productObj.pharmacy.address || ''),
+          contact: String(productObj.pharmacy.contact || ''),
+        };
+      }
+    }
+
+    const stockQuantity = safeToNumber(productObj.stockQuantity, 0);
+    const reservedQuantity = safeToNumber(productObj.reservedQuantity, 0);
+    const minStockLevel = safeToNumber(productObj.minStockLevel, 10);
+    const availableQuantity = stockQuantity - reservedQuantity;
+
+    return {
+      id: safeToString(productObj._id),
+      _id: safeToString(productObj._id),
+      name: String(productObj.name || 'Unnamed Product'),
+      description: String(productObj.description || ''),
+      price: safeToNumber(productObj.price, 0),
+      category: String(productObj.category || 'Uncategorized'),
+      image: String(productObj.image || '/placeholder-medicine.jpg'),
+      inStock: Boolean(productObj.inStock),
+      stockQuantity: stockQuantity,
+      manufacturer: String(productObj.manufacturer || 'Unknown'),
+      requiresPrescription: Boolean(productObj.requiresPrescription),
+      sku: String(productObj.sku || 'N/A'),
+      pharmacy: pharmacyData,
+      availableQuantity: availableQuantity,
+      isLowStock: availableQuantity <= minStockLevel,
+      createdAt: productObj.createdAt || null,
+      updatedAt: productObj.updatedAt || null,
+    };
+  } catch (err) {
+    console.error('Error serializing product:', err);
+    throw new Error('Failed to serialize product data');
+  }
+};
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    console.log('🚀 Single product endpoint hit!');
-
     await connectDB();
 
     const { id } = await context.params;
 
-    console.log('🔍 Fetching product with ID:', id);
-    console.log('📝 ID type:', typeof id);
-    console.log('📏 ID length:', id?.length);
-
-    // Validate MongoDB ObjectId format
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      console.log('❌ Invalid ID format');
-      const errorResponse: ApiResponse<null> = {
-        success: false,
-        message: 'Invalid product ID',
-        error: 'The provided ID is not a valid format',
-      };
-      return NextResponse.json(errorResponse, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid product ID',
+          error: 'The provided ID is not a valid MongoDB ObjectId format',
+        },
+        { status: 400 }
+      );
     }
 
-    console.log('✅ ID format valid, querying database...');
+    const product = await Product.findById(id).lean().exec();
 
-    // Find product and populate pharmacy info
-    const product = await Product.findById(id)
-      .populate('pharmacy', 'name address contact')
-      .lean();
-
-    console.log('📦 Product found:', product ? 'Yes' : 'No');
-
-    if (product) {
-      console.log('📋 Product name:', product.name);
-    }
-
-    // Check if product exists
     if (!product) {
-      const errorResponse: ApiResponse<null> = {
-        success: false,
-        message: 'Product not found',
-        error: 'No product found with the provided ID',
-      };
-      return NextResponse.json(errorResponse, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Product not found',
+          error: 'No product found with the provided ID',
+        },
+        { status: 404 }
+      );
     }
 
-    // Check if product is available for public viewing
-    // Note: We still return the product even if out of stock,
-    // but users can see it's unavailable
-    const serializedProduct = serializeProductForUser(product);
+    let productWithPharmacy = product;
+    try {
+      const populated = await Product.findById(id)
+        .populate('pharmacy', 'name address contact')
+        .lean()
+        .exec();
+
+      if (populated) {
+        productWithPharmacy = populated;
+      }
+    } catch (populateError) {
+      console.warn(
+        ' Could not populate pharmacy (continuing anyway):',
+        populateError
+      );
+    }
+
+    console.log(JSON.stringify(productWithPharmacy, null, 2));
+
+    const serializedProduct = serializeProductForUser(productWithPharmacy);
 
     const response: ApiResponse<any> = {
       success: true,
@@ -108,12 +136,11 @@ export async function GET(
     };
 
     return NextResponse.json(response, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching product for user:', error);
+  } catch (error: any) {
     const errorResponse: ApiResponse<null> = {
       success: false,
       message: 'Failed to fetch product',
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error?.message || 'Unknown error occurred',
     };
 
     return NextResponse.json(errorResponse, { status: 500 });
