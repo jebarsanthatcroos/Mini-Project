@@ -1,277 +1,644 @@
-// components/Patient/Form/PatientInsuranceForm.tsx
-import React from 'react';
-import { PatientFormData } from '@/types/patient';
-import { FiCalendar, FiCreditCard, FiUsers, FiShield } from 'react-icons/fi';
+'use client';
 
+import React, { useState } from 'react';
+import { FiAlertCircle, FiCalendar, FiInfo } from 'react-icons/fi';
+import { IPatientFormData } from '@/app/(page)/Receptionist/patients/new/page';
 interface PatientInsuranceFormProps {
-  formData: PatientFormData;
-  formErrors?: Record<string, string>;
-  onChange: (field: string, value: string) => void;
+  formData: IPatientFormData;
+  formErrors: Record<string, string>;
+  onChange: (field: string, value: string | number | Date) => void;
   onDateChange: (value: string) => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void; // Added onBlur prop
+  onBlur: (
+    e: React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => void;
 }
 
 const PatientInsuranceForm: React.FC<PatientInsuranceFormProps> = ({
   formData,
-  formErrors = {},
+  formErrors,
   onChange,
   onDateChange,
   onBlur,
 }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
+  const [showInsuranceInfo, setShowInsuranceInfo] = useState(false);
+  const [noInsurance, setNoInsurance] = useState(false);
+
+  // Insurance provider options
+  const insuranceProviders = [
+    { value: '', label: 'Select insurance provider' },
+    { value: 'AIA', label: 'AIA Insurance' },
+    { value: 'Ceylinco', label: 'Ceylinco Insurance' },
+    { value: 'Allianz', label: 'Allianz Insurance' },
+    { value: 'Janashakthi', label: 'Janashakthi Insurance' },
+    { value: 'Union', label: 'Union Assurance' },
+    { value: 'SLIC', label: 'Sri Lanka Insurance' },
+    { value: 'HNB', label: 'HNB Assurance' },
+    { value: 'BOC', label: 'BOC Insurance' },
+    { value: 'Commercial', label: 'Commercial Insurance' },
+    { value: 'Aetna', label: 'Aetna International' },
+    { value: 'Cigna', label: 'Cigna Global' },
+    { value: 'Bupa', label: 'Bupa Global' },
+    { value: 'BlueCross', label: 'Blue Cross Blue Shield' },
+    { value: 'UnitedHealth', label: 'UnitedHealthcare' },
+    { value: 'Medicare', label: 'Medicare' },
+    { value: 'Medicaid', label: 'Medicaid' },
+    { value: 'other', label: 'Other Provider' },
+  ];
+
+  // Insurance types
+  const insuranceTypes = [
+    { value: 'health', label: 'Health Insurance' },
+    { value: 'life', label: 'Life Insurance' },
+    { value: 'travel', label: 'Travel Insurance' },
+    { value: 'corporate', label: 'Corporate Insurance' },
+    { value: 'government', label: 'Government Scheme' },
+    { value: 'private', label: 'Private Insurance' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  // Coverage types
+  const coverageTypes = [
+    { value: 'basic', label: 'Basic Coverage' },
+    { value: 'comprehensive', label: 'Comprehensive Coverage' },
+    { value: 'premium', label: 'Premium Coverage' },
+    { value: 'emergency', label: 'Emergency Only' },
+    { value: 'inpatient', label: 'Inpatient Only' },
+    { value: 'outpatient', label: 'Outpatient Only' },
+    { value: 'dental', label: 'Dental Coverage' },
+    { value: 'vision', label: 'Vision Coverage' },
+    { value: 'other', label: 'Other Coverage' },
+  ];
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    onChange(name, value);
+  };
+
+  const handleInputBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const syntheticEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        name: `insurance.${e.target.name}`,
+      },
+    } as React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >;
+
+    onBlur(syntheticEvent);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onDateChange(e.target.value);
   };
 
-  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (onBlur) {
-      onBlur(e);
+  const handleDateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const syntheticEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        name: 'insurance.validUntil',
+      },
+    } as React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >;
+
+    onBlur(syntheticEvent);
+  };
+
+  // Handle no insurance checkbox
+  const handleNoInsuranceChange = (checked: boolean) => {
+    setNoInsurance(checked);
+
+    if (checked) {
+      // Clear all insurance fields
+      onChange('provider', '');
+      onChange('policyNumber', '');
+      onChange('groupNumber', '');
+      onDateChange('');
     }
   };
 
-  // Calculate if insurance is expiring soon (within 30 days)
-  const isExpiringSoon = () => {
-    const validUntil = new Date(formData.insurance.validUntil);
+  // Format date for input field
+  const formatDateForInput = (date: Date | undefined): string => {
+    if (!date) return '';
+
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+
+    return d.toISOString().split('T')[0];
+  };
+
+  // Calculate days until insurance expires
+  const getDaysUntilExpiry = (): number | null => {
+    if (!formData.insurance?.validUntil) return null;
+
+    const expiryDate = new Date(formData.insurance.validUntil);
     const today = new Date();
-    const timeDiff = validUntil.getTime() - today.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-    return daysDiff <= 30 && daysDiff > 0;
+
+    if (isNaN(expiryDate.getTime())) return null;
+
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays;
   };
 
-  // Calculate if insurance is expired
-  const isExpired = () => {
-    const validUntil = new Date(formData.insurance.validUntil);
-    const today = new Date();
-    return validUntil < today;
-  };
+  const daysUntilExpiry = getDaysUntilExpiry();
+  const isExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
+  const isExpiringSoon =
+    daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
 
-  const getInsuranceStatus = () => {
-    if (isExpired())
-      return {
-        status: 'Expired',
-        color: 'text-red-600',
-        bg: 'bg-red-50',
-        border: 'border-red-200',
-      };
-    if (isExpiringSoon())
-      return {
-        status: 'Expiring Soon',
-        color: 'text-orange-600',
-        bg: 'bg-orange-50',
-        border: 'border-orange-200',
-      };
-    return {
-      status: 'Active',
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-    };
+  // Check if any insurance field is filled
+  const hasInsuranceInfo = () => {
+    return (
+      formData.insurance?.provider ||
+      formData.insurance?.policyNumber ||
+      formData.insurance?.groupNumber ||
+      formData.insurance?.validUntil
+    );
   };
-
-  const insuranceStatus = getInsuranceStatus();
 
   return (
     <div className='space-y-6'>
-      {/* Insurance Status Banner */}
-      {formData.insurance.provider && formData.insurance.validUntil && (
-        <div
-          className={`${insuranceStatus.bg} ${insuranceStatus.border} border rounded-lg p-4`}
+      {/* Insurance Information Header */}
+      <div className='flex items-center justify-between'>
+        <div>
+          <h3 className='text-lg font-medium text-gray-900'>
+            Insurance Information
+          </h3>
+          <p className='text-sm text-gray-600'>
+            Provide insurance details for billing and claims processing
+          </p>
+        </div>
+        <button
+          type='button'
+          onClick={() => setShowInsuranceInfo(!showInsuranceInfo)}
+          className='inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800'
         >
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-3'>
-              <FiShield className={`h-5 w-5 ${insuranceStatus.color}`} />
-              <div>
-                <h4 className={`text-sm font-medium ${insuranceStatus.color}`}>
-                  Insurance Status: {insuranceStatus.status}
-                </h4>
-                <p className='text-sm text-gray-600'>
-                  {formData.insurance.provider} • Valid until{' '}
-                  {formData.insurance.validUntil.toLocaleDateString()}
-                </p>
-              </div>
+          <FiInfo className='w-4 h-4' />
+          {showInsuranceInfo ? 'Hide Info' : 'Show Info'}
+        </button>
+      </div>
+
+      {/* Insurance Information Card */}
+      {showInsuranceInfo && (
+        <div className='p-4 bg-blue-50 border border-blue-200 rounded-md'>
+          <div className='flex items-start'>
+            <div className='shrink-0'>
+              <FiInfo className='w-5 h-5 text-blue-400 mt-0.5' />
+            </div>
+            <div className='ml-3'>
+              <h4 className='text-sm font-medium text-blue-800'>
+                Insurance Information Guidelines
+              </h4>
+              <ul className='mt-2 text-sm text-blue-700 list-disc list-inside space-y-1'>
+                <li>Policy number is typically found on the insurance card</li>
+                <li>Group number is for corporate or group insurance plans</li>
+                <li>
+                  Make sure the expiry date is valid for upcoming appointments
+                </li>
+                <li>Contact insurance provider for any verification needed</li>
+                <li>Update insurance information regularly</li>
+              </ul>
             </div>
           </div>
         </div>
       )}
 
-      {/* Insurance Provider */}
-      <div>
-        <label
-          htmlFor='provider'
-          className='block text-sm font-medium text-gray-700 mb-1'
-        >
-          Insurance Provider *
-        </label>
-        <div className='relative'>
-          <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-            <FiShield className='h-4 w-4 text-gray-400' />
-          </div>
+      {/* No Insurance Option */}
+      <div className='bg-gray-50 p-4 rounded-md border border-gray-200'>
+        <div className='flex items-center'>
           <input
-            type='text'
-            id='provider'
-            name='provider'
-            value={formData.insurance.provider}
-            onChange={handleChange}
-            onBlur={handleInputBlur}
-            className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.provider || formErrors['insurance.provider']
-                ? 'border-red-300'
-                : 'border-gray-300'
-            }`}
-            placeholder='Enter insurance provider name'
+            type='checkbox'
+            id='noInsurance'
+            name='noInsurance'
+            checked={noInsurance}
+            onChange={e => handleNoInsuranceChange(e.target.checked)}
+            className='h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
           />
+          <label
+            htmlFor='noInsurance'
+            className='ml-2 block text-sm font-medium text-gray-900'
+          >
+            Patient has no insurance coverage
+          </label>
         </div>
-        {(formErrors.provider || formErrors['insurance.provider']) && (
-          <p className='mt-1 text-sm text-red-600'>
-            {formErrors.provider || formErrors['insurance.provider']}
-          </p>
-        )}
+        <p className='mt-1 text-xs text-gray-500 ml-6'>
+          Check this if the patient is paying out-of-pocket or using cash
+          payments
+        </p>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        {/* Policy Number */}
-        <div>
-          <label
-            htmlFor='policyNumber'
-            className='block text-sm font-medium text-gray-700 mb-1'
-          >
-            Policy Number *
-          </label>
-          <div className='relative'>
-            <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-              <FiCreditCard className='h-4 w-4 text-gray-400' />
-            </div>
+      {/* Insurance Form Fields - Disabled when no insurance is checked */}
+      <div
+        className={`space-y-6 ${noInsurance ? 'opacity-50 pointer-events-none' : ''}`}
+      >
+        {/* Insurance Form Fields */}
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+          {/* Insurance Provider */}
+          <div>
+            <label
+              htmlFor='provider'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Insurance Provider
+            </label>
+            <select
+              id='provider'
+              name='provider'
+              value={formData.insurance?.provider || ''}
+              onChange={handleInputChange}
+              onBlur={handleInputBlur}
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                formErrors['insurance.provider'] || formErrors.provider
+                  ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300'
+              }`}
+            >
+              {insuranceProviders.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {(formErrors['insurance.provider'] || formErrors.provider) && (
+              <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+                <FiAlertCircle className='w-4 h-4' />
+                <span>
+                  {formErrors['insurance.provider'] || formErrors.provider}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Insurance Type */}
+          <div>
+            <label
+              htmlFor='insuranceType'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Insurance Type
+            </label>
+            <select
+              id='insuranceType'
+              name='insuranceType'
+              className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+              onChange={e => {
+                // You can add this to your formData if needed
+                console.log('Insurance type:', e.target.value);
+              }}
+            >
+              <option value=''>Select insurance type</option>
+              {insuranceTypes.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Policy Number */}
+          <div>
+            <label
+              htmlFor='policyNumber'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Policy Number
+            </label>
             <input
               type='text'
               id='policyNumber'
               name='policyNumber'
-              value={formData.insurance.policyNumber}
-              onChange={handleChange}
+              value={formData.insurance?.policyNumber || ''}
+              onChange={handleInputChange}
               onBlur={handleInputBlur}
-              className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                formErrors.policyNumber || formErrors['insurance.policyNumber']
-                  ? 'border-red-300'
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                formErrors['insurance.policyNumber'] || formErrors.policyNumber
+                  ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
                   : 'border-gray-300'
               }`}
-              placeholder='Enter policy number'
+              placeholder='POL-12345678'
             />
+            {(formErrors['insurance.policyNumber'] ||
+              formErrors.policyNumber) && (
+              <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+                <FiAlertCircle className='w-4 h-4' />
+                <span>
+                  {formErrors['insurance.policyNumber'] ||
+                    formErrors.policyNumber}
+                </span>
+              </div>
+            )}
           </div>
-          {(formErrors.policyNumber ||
-            formErrors['insurance.policyNumber']) && (
-            <p className='mt-1 text-sm text-red-600'>
-              {formErrors.policyNumber || formErrors['insurance.policyNumber']}
-            </p>
-          )}
-        </div>
 
-        {/* Group Number */}
-        <div>
-          <label
-            htmlFor='groupNumber'
-            className='block text-sm font-medium text-gray-700 mb-1'
-          >
-            Group Number (Optional)
-          </label>
-          <div className='relative'>
-            <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-              <FiUsers className='h-4 w-4 text-gray-400' />
-            </div>
+          {/* Group Number */}
+          <div>
+            <label
+              htmlFor='groupNumber'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Group Number (Optional)
+            </label>
             <input
               type='text'
               id='groupNumber'
               name='groupNumber'
-              value={formData.insurance.groupNumber || ''}
-              onChange={handleChange}
+              value={formData.insurance?.groupNumber || ''}
+              onChange={handleInputChange}
               onBlur={handleInputBlur}
-              className='block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
-              placeholder='Enter group number'
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                formErrors['insurance.groupNumber'] || formErrors.groupNumber
+                  ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300'
+              }`}
+              placeholder='GRP-7890'
             />
-          </div>
-          {(formErrors.groupNumber || formErrors['insurance.groupNumber']) && (
-            <p className='mt-1 text-sm text-red-600'>
-              {formErrors.groupNumber || formErrors['insurance.groupNumber']}
+            {(formErrors['insurance.groupNumber'] ||
+              formErrors.groupNumber) && (
+              <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+                <FiAlertCircle className='w-4 h-4' />
+                <span>
+                  {formErrors['insurance.groupNumber'] ||
+                    formErrors.groupNumber}
+                </span>
+              </div>
+            )}
+            <p className='mt-1 text-xs text-gray-500'>
+              Usually for corporate or group insurance plans
             </p>
-          )}
-        </div>
-      </div>
-
-      {/* Valid Until Date */}
-      <div>
-        <label
-          htmlFor='validUntil'
-          className='block text-sm font-medium text-gray-700 mb-1'
-        >
-          Insurance Valid Until *
-        </label>
-        <div className='relative'>
-          <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-            <FiCalendar className='h-4 w-4 text-gray-400' />
           </div>
-          <input
-            type='date'
-            id='validUntil'
-            name='validUntil'
-            value={formData.insurance.validUntil.toISOString().split('T')[0]}
-            onChange={handleDateChange}
-            onBlur={handleInputBlur}
-            min={new Date().toISOString().split('T')[0]} // Prevent past dates
-            className={`block w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.validUntil || formErrors['insurance.validUntil']
-                ? 'border-red-300'
-                : 'border-gray-300'
-            }`}
-          />
+
+          {/* Valid Until Date */}
+          <div>
+            <label
+              htmlFor='validUntil'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Valid Until
+            </label>
+            <div className='relative'>
+              <input
+                type='date'
+                id='validUntil'
+                name='validUntil'
+                value={formatDateForInput(formData.insurance?.validUntil)}
+                onChange={handleDateChange}
+                onBlur={handleDateBlur}
+                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                  formErrors['insurance.validUntil'] || formErrors.validUntil
+                    ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300'
+                }`}
+              />
+              <div className='absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none'>
+                <FiCalendar className='h-5 w-5 text-gray-400' />
+              </div>
+            </div>
+            {(formErrors['insurance.validUntil'] || formErrors.validUntil) && (
+              <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+                <FiAlertCircle className='w-4 h-4' />
+                <span>
+                  {formErrors['insurance.validUntil'] || formErrors.validUntil}
+                </span>
+              </div>
+            )}
+
+            {/* Expiry Status Indicator */}
+            {daysUntilExpiry !== null && (
+              <div className='mt-2'>
+                {isExpired ? (
+                  <div className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'>
+                    <span className='flex items-center'>
+                      <span className='w-2 h-2 bg-red-500 rounded-full mr-1'></span>
+                      Expired {Math.abs(daysUntilExpiry)} days ago
+                    </span>
+                  </div>
+                ) : isExpiringSoon ? (
+                  <div className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+                    <span className='flex items-center'>
+                      <span className='w-2 h-2 bg-yellow-500 rounded-full mr-1'></span>
+                      Expires in {daysUntilExpiry} days
+                    </span>
+                  </div>
+                ) : (
+                  <div className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'>
+                    <span className='flex items-center'>
+                      <span className='w-2 h-2 bg-green-500 rounded-full mr-1'></span>
+                      Valid for {daysUntilExpiry} more days
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Coverage Type */}
+          <div>
+            <label
+              htmlFor='coverageType'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
+              Coverage Type
+            </label>
+            <select
+              id='coverageType'
+              name='coverageType'
+              className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+              onChange={e => {
+                // You can add this to your formData if needed
+                console.log('Coverage type:', e.target.value);
+              }}
+            >
+              <option value=''>Select coverage type</option>
+              {coverageTypes.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        {(formErrors.validUntil || formErrors['insurance.validUntil']) && (
-          <p className='mt-1 text-sm text-red-600'>
-            {formErrors.validUntil || formErrors['insurance.validUntil']}
+
+        {/* Insurance Card Holder Information */}
+        <div className='pt-6 border-t border-gray-200'>
+          <h4 className='text-sm font-medium text-gray-900 mb-4'>
+            Card Holder Information (Optional)
+          </h4>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div>
+              <label
+                htmlFor='cardHolderName'
+                className='block text-sm font-medium text-gray-700 mb-1'
+              >
+                Card Holder Name
+              </label>
+              <input
+                type='text'
+                id='cardHolderName'
+                name='cardHolderName'
+                className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+                placeholder='As shown on insurance card'
+                onChange={e => {
+                  // You can add this to your formData if needed
+                  console.log('Card holder name:', e.target.value);
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor='cardHolderRelationship'
+                className='block text-sm font-medium text-gray-700 mb-1'
+              >
+                Relationship to Patient
+              </label>
+              <select
+                id='cardHolderRelationship'
+                name='cardHolderRelationship'
+                className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+                onChange={e => {
+                  // You can add this to your formData if needed
+                  console.log('Card holder relationship:', e.target.value);
+                }}
+              >
+                <option value=''>Select relationship</option>
+                <option value='self'>Self</option>
+                <option value='spouse'>Spouse</option>
+                <option value='parent'>Parent</option>
+                <option value='child'>Child</option>
+                <option value='employer'>Employer</option>
+                <option value='other'>Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Notes */}
+        <div>
+          <label
+            htmlFor='insuranceNotes'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
+            Insurance Notes (Optional)
+          </label>
+          <textarea
+            id='insuranceNotes'
+            name='insuranceNotes'
+            rows={3}
+            className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+            placeholder='Any special instructions, limitations, or additional coverage information...'
+            onChange={e => {
+              // You can add this to your formData if needed
+              console.log('Insurance notes:', e.target.value);
+            }}
+          />
+          <p className='mt-1 text-xs text-gray-500'>
+            Add notes about co-pay amounts, special authorizations, or claim
+            procedures
           </p>
-        )}
-        <p className='mt-1 text-xs text-gray-500'>
-          Select the expiration date of the insurance policy
-        </p>
+        </div>
+
+        {/* Upload Insurance Card (Optional) */}
+        <div>
+          <label className='block text-sm font-medium text-gray-700 mb-2'>
+            Upload Insurance Card (Optional)
+          </label>
+          <div className='mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md'>
+            <div className='space-y-1 text-center'>
+              <svg
+                className='mx-auto h-12 w-12 text-gray-400'
+                stroke='currentColor'
+                fill='none'
+                viewBox='0 0 48 48'
+                aria-hidden='true'
+              >
+                <path
+                  d='M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02'
+                  strokeWidth={2}
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                />
+              </svg>
+              <div className='flex text-sm text-gray-600'>
+                <label
+                  htmlFor='file-upload'
+                  className='relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500'
+                >
+                  <span>Upload a file</span>
+                  <input
+                    id='file-upload'
+                    name='file-upload'
+                    type='file'
+                    className='sr-only'
+                    accept='.jpg,.jpeg,.png,.pdf'
+                    onChange={e => {
+                      // Handle file upload
+                      console.log('File selected:', e.target.files?.[0]);
+                    }}
+                  />
+                </label>
+                <p className='pl-1'>or drag and drop</p>
+              </div>
+              <p className='text-xs text-gray-500'>PNG, JPG, PDF up to 10MB</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Insurance Information Preview */}
-      {(formData.insurance.provider || formData.insurance.policyNumber) && (
-        <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-          <h4 className='text-sm font-medium text-blue-900 mb-3 flex items-center gap-2'>
-            <FiShield className='h-4 w-4' />
-            Insurance Information Preview
+      {/* Insurance Summary */}
+      {hasInsuranceInfo() && !noInsurance && (
+        <div className='mt-6 p-4 bg-green-50 border border-green-200 rounded-md'>
+          <h4 className='text-sm font-medium text-green-800 mb-2'>
+            Insurance Summary
           </h4>
-          <div className='space-y-2 text-sm'>
-            {formData.insurance.provider && (
-              <div className='flex justify-between'>
-                <span className='text-blue-700 font-medium'>Provider:</span>
-                <span className='text-blue-900'>
-                  {formData.insurance.provider}
-                </span>
+          <div className='text-sm text-green-700 space-y-1'>
+            {formData.insurance?.provider && (
+              <div className='flex'>
+                <span className='w-32 font-medium'>Provider:</span>
+                <span>{formData.insurance.provider}</span>
               </div>
             )}
-            {formData.insurance.policyNumber && (
-              <div className='flex justify-between'>
-                <span className='text-blue-700 font-medium'>Policy #:</span>
-                <span className='text-blue-900'>
-                  {formData.insurance.policyNumber}
-                </span>
+            {formData.insurance?.policyNumber && (
+              <div className='flex'>
+                <span className='w-32 font-medium'>Policy No:</span>
+                <span>{formData.insurance.policyNumber}</span>
               </div>
             )}
-            {formData.insurance.groupNumber && (
-              <div className='flex justify-between'>
-                <span className='text-blue-700 font-medium'>Group #:</span>
-                <span className='text-blue-900'>
-                  {formData.insurance.groupNumber}
-                </span>
+            {formData.insurance?.groupNumber && (
+              <div className='flex'>
+                <span className='w-32 font-medium'>Group No:</span>
+                <span>{formData.insurance.groupNumber}</span>
               </div>
             )}
-            {formData.insurance.validUntil && (
-              <div className='flex justify-between'>
-                <span className='text-blue-700 font-medium'>Valid Until:</span>
-                <span className='text-blue-900'>
-                  {formData.insurance.validUntil.toLocaleDateString()}
+            {formData.insurance?.validUntil && (
+              <div className='flex'>
+                <span className='w-32 font-medium'>Valid Until:</span>
+                <span>
+                  {new Date(formData.insurance.validUntil).toLocaleDateString()}
+                  {daysUntilExpiry !== null && (
+                    <span
+                      className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        isExpired
+                          ? 'bg-red-100 text-red-800'
+                          : isExpiringSoon
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {isExpired
+                        ? 'Expired'
+                        : isExpiringSoon
+                          ? 'Expiring soon'
+                          : 'Active'}
+                    </span>
+                  )}
                 </span>
               </div>
             )}
@@ -279,28 +646,21 @@ const PatientInsuranceForm: React.FC<PatientInsuranceFormProps> = ({
         </div>
       )}
 
-      {/* Help Text */}
-      <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
-        <h4 className='text-sm font-medium text-green-800 mb-2 flex items-center gap-2'>
-          <FiShield className='h-4 w-4' />
-          Insurance Information Guidelines
-        </h4>
-        <ul className='text-sm text-green-700 space-y-1'>
-          <li>
-            • Enter the exact policy number as shown on the insurance card
-          </li>
-          <li>
-            • Include the group number if applicable for the insurance plan
-          </li>
-          <li>
-            • Verify the expiration date matches the insurance documentation
-          </li>
-          <li>
-            • Update this information when insurance is renewed or changed
-          </li>
-          <li>• Contact the insurance provider for any verification needs</li>
-        </ul>
-      </div>
+      {/* No Insurance Summary */}
+      {noInsurance && (
+        <div className='mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md'>
+          <h4 className='text-sm font-medium text-gray-800 mb-2'>
+            Payment Information
+          </h4>
+          <div className='text-sm text-gray-700'>
+            <p>Patient will be paying out-of-pocket for all services.</p>
+            <p className='mt-1 text-xs text-gray-500'>
+              Ensure the patient understands payment expectations before
+              providing services.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

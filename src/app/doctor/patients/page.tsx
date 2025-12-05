@@ -1,4 +1,3 @@
-// app/doctor/patients/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -236,13 +235,6 @@ export default function PatientsPage() {
                 Manage your patient records and information
               </p>
             </div>
-            <button
-              onClick={handleAddPatient}
-              className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md'
-            >
-              <FiPlus className='w-5 h-5' />
-              New Patient
-            </button>
           </div>
         </div>
 

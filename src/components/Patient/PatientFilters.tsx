@@ -8,8 +8,15 @@ interface PatientFiltersProps {
   onGenderFilterChange: (value: string) => void;
   ageFilter: string;
   onAgeFilterChange: (value: string) => void;
+  maritalStatusFilter: string;
+  onMaritalStatusFilterChange: (value: string) => void;
+  isActiveFilter: boolean;
+  onIsActiveFilterChange: (value: boolean) => void;
   sortBy: string;
-  onSortByChange: (value: string) => void;
+  sortOrder: string;
+  onSortChange: (sortBy: string, sortOrder: string) => void;
+  limit: number;
+  onLimitChange: (value: number) => void;
 }
 
 const PatientFilters: React.FC<PatientFiltersProps> = ({
@@ -19,8 +26,15 @@ const PatientFilters: React.FC<PatientFiltersProps> = ({
   onGenderFilterChange,
   ageFilter,
   onAgeFilterChange,
+  maritalStatusFilter,
+  onMaritalStatusFilterChange,
+  isActiveFilter,
+  onIsActiveFilterChange,
   sortBy,
-  onSortByChange,
+  sortOrder,
+  onSortChange,
+  limit,
+  onLimitChange,
 }) => {
   return (
     <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6'>
@@ -59,14 +73,54 @@ const PatientFilters: React.FC<PatientFiltersProps> = ({
         </select>
 
         <select
+          value={maritalStatusFilter}
+          onChange={e => onMaritalStatusFilterChange(e.target.value)}
+          className='px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        >
+          <option value='ALL'>All Status</option>
+          <option value='SINGLE'>Single</option>
+          <option value='MARRIED'>Married</option>
+          <option value='DIVORCED'>Divorced</option>
+          <option value='WIDOWED'>Widowed</option>
+        </select>
+
+        <select
+          value={isActiveFilter ? 'ACTIVE' : 'INACTIVE'}
+          onChange={e => onIsActiveFilterChange(e.target.value === 'ACTIVE')}
+          className='px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        >
+          <option value='ACTIVE'>Active</option>
+          <option value='INACTIVE'>Inactive</option>
+        </select>
+
+        <select
           value={sortBy}
-          onChange={e => onSortByChange(e.target.value)}
+          onChange={e => onSortChange(e.target.value, sortOrder)}
           className='px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
         >
           <option value='name'>Sort by Name</option>
           <option value='age'>Sort by Age</option>
           <option value='recent'>Sort by Recent</option>
           <option value='gender'>Sort by Gender</option>
+        </select>
+
+        <select
+          value={sortOrder}
+          onChange={e => onSortChange(sortBy, e.target.value)}
+          className='px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        >
+          <option value='asc'>Ascending</option>
+          <option value='desc'>Descending</option>
+        </select>
+
+        <select
+          value={limit}
+          onChange={e => onLimitChange(Number(e.target.value))}
+          className='px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        >
+          <option value='10'>10 per page</option>
+          <option value='25'>25 per page</option>
+          <option value='50'>50 per page</option>
         </select>
       </div>
     </div>

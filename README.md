@@ -17,8 +17,34 @@ GET /api/patients/stats - Get patient statistics
 
 /api/patients/check?email=jebarsanthatcroos@gmail.com&nic=200121900000
 
-GET /api/patients/search - Search patients
-GET /api/receptionists?available=true
+# Get all patients (paginated)
+
+GET /api/patients?page=1&limit=10
+
+# Search for patients
+
+GET /api/patients?search=john&page=1
+
+# Filter by gender
+
+GET /api/patients?gender=MALE&page=1
+
+# Filter by blood type
+
+GET /api/patients?bloodType=A+&page=1
+
+# Filter by date range
+
+GET /api/patients?startDate=2024-01-01&endDate=2024-12-31
+
+# Sort by name
+
+GET /api/patients?sortBy=firstName&sortOrder=asc
+
+# Filter by age group
+
+GET /api/patients?ageGroup=ADULT&page=1
+
 i would like to ask to ask you to differentite the components
 
 ## Getting Started

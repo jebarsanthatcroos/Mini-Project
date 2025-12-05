@@ -1,147 +1,239 @@
-// components/Patient/Form/PatientMedicalInfoForm.tsx
+'use client';
+
 import React, { useState } from 'react';
-import { PatientFormData } from '@/types/patient';
-import { FiPlus, FiX, FiAlertTriangle, FiInfo, FiLoader } from 'react-icons/fi';
+import { FiAlertCircle, FiPlus, FiTrash2, FiInfo } from 'react-icons/fi';
+import {
+  BloodType,
+  IPatientFormData,
+} from '@/app/(page)/Receptionist/patients/new/page';
 
 interface PatientMedicalInfoFormProps {
-  formData: PatientFormData;
-  formErrors?: Record<string, string>;
+  formData: IPatientFormData;
+  formErrors: Record<string, string>;
   onChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => void;
   onArrayChange: (field: 'allergies' | 'medications', value: string[]) => void;
-  onBlur?: (
+  onBlur: (
     e: React.FocusEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => void;
-  isLoading?: boolean;
 }
 
 const PatientMedicalInfoForm: React.FC<PatientMedicalInfoFormProps> = ({
   formData,
-  formErrors = {},
+  formErrors,
   onChange,
   onArrayChange,
   onBlur,
-  isLoading = false,
 }) => {
-  const [allergyInput, setAllergyInput] = useState('');
-  const [medicationInput, setMedicationInput] = useState('');
+  const [newAllergy, setNewAllergy] = useState('');
+  const [newMedication, setNewMedication] = useState('');
+  const [showMedicalGuidelines, setShowMedicalGuidelines] = useState(false);
 
-  const addAllergy = () => {
-    if (allergyInput.trim() && !isLoading) {
-      onArrayChange('allergies', [...formData.allergies, allergyInput.trim()]);
-      setAllergyInput('');
-    }
+  // Blood type options
+  const bloodTypeOptions: { value: BloodType; label: string }[] = [
+    { value: 'A+', label: 'A Positive (A+)' },
+    { value: 'A-', label: 'A Negative (A-)' },
+    { value: 'B+', label: 'B Positive (B+)' },
+    { value: 'B-', label: 'B Negative (B-)' },
+    { value: 'AB+', label: 'AB Positive (AB+)' },
+    { value: 'AB-', label: 'AB Negative (AB-)' },
+    { value: 'O+', label: 'O Positive (O+)' },
+    { value: 'O-', label: 'O Negative (O-)' },
+  ];
+
+  // Common allergies for suggestions
+  const commonAllergies = [
+    'Penicillin',
+    'Sulfa drugs',
+    'Aspirin',
+    'Ibuprofen',
+    'Naproxen',
+    'Codeine',
+    'Latex',
+    'Insect stings',
+    'Peanuts',
+    'Tree nuts',
+    'Shellfish',
+    'Eggs',
+    'Milk',
+    'Soy',
+    'Wheat',
+    'Fish',
+    'Pollen',
+    'Dust mites',
+    'Mold',
+    'Pet dander',
+  ];
+
+  // Common medications for suggestions
+  const commonMedications = [
+    'Metformin',
+    'Lisinopril',
+    'Atorvastatin',
+    'Levothyroxine',
+    'Amlodipine',
+    'Metoprolol',
+    'Albuterol',
+    'Omeprazole',
+    'Losartan',
+    'Gabapentin',
+    'Hydrochlorothiazide',
+    'Sertraline',
+    'Simvastatin',
+    'Montelukast',
+    'Escitalopram',
+    'Fluticasone',
+    'Rosuvastatin',
+    'Bupropion',
+    'Trazodone',
+    'Duloxetine',
+  ];
+
+  // Medical conditions
+  const medicalConditions = [
+    'Diabetes',
+    'Hypertension',
+    'Asthma',
+    'Heart Disease',
+    'Arthritis',
+    'Cancer',
+    'Stroke',
+    'Chronic Kidney Disease',
+    'COPD',
+    'Depression',
+    'Anxiety',
+    'Epilepsy',
+    'HIV/AIDS',
+    'Hepatitis',
+    'Thyroid Disorders',
+    'Migraine',
+    'Osteoporosis',
+    'Autoimmune Diseases',
+  ];
+
+  // Handle adding allergy
+  const handleAddAllergy = () => {
+    if (newAllergy.trim() === '') return;
+
+    const updatedAllergies = [...(formData.allergies || []), newAllergy.trim()];
+    onArrayChange('allergies', updatedAllergies);
+    setNewAllergy('');
   };
 
-  const removeAllergy = (index: number) => {
-    if (!isLoading) {
-      onArrayChange(
-        'allergies',
-        formData.allergies.filter((_, i) => i !== index)
-      );
-    }
+  // Handle removing allergy
+  const handleRemoveAllergy = (index: number) => {
+    const updatedAllergies = (formData.allergies || []).filter(
+      (_, i) => i !== index
+    );
+    onArrayChange('allergies', updatedAllergies);
   };
 
-  const addMedication = () => {
-    if (medicationInput.trim() && !isLoading) {
-      onArrayChange('medications', [
-        ...formData.medications,
-        medicationInput.trim(),
-      ]);
-      setMedicationInput('');
-    }
+  // Handle adding medication
+  const handleAddMedication = () => {
+    if (newMedication.trim() === '') return;
+
+    const updatedMedications = [
+      ...(formData.medications || []),
+      newMedication.trim(),
+    ];
+    onArrayChange('medications', updatedMedications);
+    setNewMedication('');
   };
 
-  const removeMedication = (index: number) => {
-    if (!isLoading) {
-      onArrayChange(
-        'medications',
-        formData.medications.filter((_, i) => i !== index)
-      );
-    }
+  // Handle removing medication
+  const handleRemoveMedication = (index: number) => {
+    const updatedMedications = (formData.medications || []).filter(
+      (_, i) => i !== index
+    );
+    onArrayChange('medications', updatedMedications);
   };
 
-  const handleKeyPress = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    type: 'allergy' | 'medication'
-  ) => {
-    if (e.key === 'Enter' && !isLoading) {
-      e.preventDefault();
-      if (type === 'allergy') {
-        addAllergy();
-      } else {
-        addMedication();
-      }
-    }
+  // Handle allergy suggestion click
+  const handleAllergySuggestionClick = (allergy: string) => {
+    const updatedAllergies = [...(formData.allergies || []), allergy];
+    onArrayChange('allergies', updatedAllergies);
   };
 
-  // Handle blur for the allergy and medication input fields
-  const handleInputBlur = (field: 'allergy' | 'medication') => {
-    if (isLoading) return;
-    if (field === 'allergy' && allergyInput.trim()) {
-      addAllergy();
-    } else if (field === 'medication' && medicationInput.trim()) {
-      addMedication();
-    }
+  // Handle medication suggestion click
+  const handleMedicationSuggestionClick = (medication: string) => {
+    const updatedMedications = [...(formData.medications || []), medication];
+    onArrayChange('medications', updatedMedications);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    if (isLoading) return;
-    onChange(e);
-  };
+  // Handle medical condition click
+  const handleMedicalConditionClick = (condition: string) => {
+    const currentHistory = formData.medicalHistory || '';
+    const updatedHistory = currentHistory
+      ? `${currentHistory}, ${condition}`
+      : condition;
 
-  const handleBlur = (
-    e: React.FocusEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    if (isLoading) return;
-    if (onBlur) {
-      onBlur(e);
-    }
-  };
+    const syntheticEvent = {
+      target: {
+        name: 'medicalHistory',
+        value: updatedHistory,
+      },
+    } as React.ChangeEvent<HTMLTextAreaElement>;
 
-  // Calculate BMI if height and weight are provided
-  const calculateBMI = (): number | null => {
-    if (formData.height && formData.weight) {
-      const heightInMeters = formData.height / 100;
-      return Number(
-        (formData.weight / (heightInMeters * heightInMeters)).toFixed(1)
-      );
-    }
-    return null;
-  };
-
-  const bmi = calculateBMI();
-  const getBMICategory = (bmi: number): string => {
-    if (bmi < 18.5) return 'Underweight';
-    if (bmi < 25) return 'Normal weight';
-    if (bmi < 30) return 'Overweight';
-    return 'Obese';
-  };
-
-  const getBMIColor = (bmi: number): string => {
-    if (bmi < 18.5) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    if (bmi < 25) return 'text-green-600 bg-green-50 border-green-200';
-    if (bmi < 30) return 'text-orange-600 bg-orange-50 border-orange-200';
-    return 'text-red-600 bg-red-50 border-red-200';
+    onChange(syntheticEvent);
   };
 
   return (
-    <div className='space-y-6 relative'>
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className='absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10 rounded-lg'>
-          <FiLoader className='animate-spin text-blue-500 text-2xl' />
+    <div className='space-y-8'>
+      {/* Medical Information Header */}
+      <div className='flex items-center justify-between'>
+        <div>
+          <h3 className='text-lg font-medium text-gray-900'>
+            Medical Information
+          </h3>
+          <p className='text-sm text-gray-600'>
+            Provide medical history, allergies, and current medications
+          </p>
+        </div>
+        <button
+          type='button'
+          onClick={() => setShowMedicalGuidelines(!showMedicalGuidelines)}
+          className='inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800'
+        >
+          <FiInfo className='w-4 h-4' />
+          {showMedicalGuidelines ? 'Hide Guidelines' : 'Show Guidelines'}
+        </button>
+      </div>
+
+      {/* Medical Guidelines Card */}
+      {showMedicalGuidelines && (
+        <div className='p-4 bg-blue-50 border border-blue-200 rounded-md'>
+          <div className='flex items-start'>
+            <div className='shrink-0'>
+              <FiInfo className='w-5 h-5 text-blue-400 mt-0.5' />
+            </div>
+            <div className='ml-3'>
+              <h4 className='text-sm font-medium text-blue-800'>
+                Medical Information Guidelines
+              </h4>
+              <ul className='mt-2 text-sm text-blue-700 list-disc list-inside space-y-1'>
+                <li>
+                  Be specific about medication names, dosages, and frequencies
+                </li>
+                <li>
+                  Include both prescription and over-the-counter medications
+                </li>
+                <li>
+                  Note all known allergies, including drug, food, and
+                  environmental
+                </li>
+                <li>
+                  Include major surgeries, hospitalizations, and chronic
+                  conditions
+                </li>
+                <li>Update this information during each visit</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 
@@ -156,149 +248,217 @@ const PatientMedicalInfoForm: React.FC<PatientMedicalInfoFormProps> = ({
         <textarea
           id='medicalHistory'
           name='medicalHistory'
-          value={formData.medicalHistory}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          disabled={isLoading}
           rows={4}
-          className={`block w-full border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-            formErrors.medicalHistory ? 'border-red-300' : 'border-gray-300'
-          } ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-          placeholder="Enter patient's medical history, past conditions, surgeries, chronic illnesses, etc."
+          value={formData.medicalHistory || ''}
+          onChange={onChange}
+          onBlur={onBlur}
+          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+            formErrors.medicalHistory
+              ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+              : 'border-gray-300'
+          }`}
+          placeholder='Previous illnesses, surgeries, chronic conditions, family medical history...'
         />
         {formErrors.medicalHistory && (
-          <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-            <FiAlertTriangle className='w-3 h-3' />
-            {formErrors.medicalHistory}
-          </p>
+          <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+            <FiAlertCircle className='w-4 h-4' />
+            <span>{formErrors.medicalHistory}</span>
+          </div>
         )}
-        <p className='mt-1 text-xs text-gray-500'>
-          Include relevant medical history that could impact current treatment
-        </p>
+
+        {/* Common Medical Conditions */}
+        <div className='mt-3'>
+          <p className='text-sm text-gray-600 mb-2'>
+            Common conditions (click to add):
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {medicalConditions.map(condition => (
+              <button
+                key={condition}
+                type='button'
+                onClick={() => handleMedicalConditionClick(condition)}
+                className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors'
+              >
+                {condition}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Allergies Section */}
       <div>
-        <label className='block text-sm font-medium text-gray-700 mb-2'>
+        <label className='block text-sm font-medium text-gray-700 mb-1'>
           Allergies
         </label>
-        <div className='flex gap-2 mb-2'>
+
+        {/* Add Allergy Input */}
+        <div className='flex gap-2 mb-3'>
           <input
             type='text'
-            value={allergyInput}
-            onChange={e => setAllergyInput(e.target.value)}
-            onKeyPress={e => handleKeyPress(e, 'allergy')}
-            onBlur={() => handleInputBlur('allergy')}
-            disabled={isLoading}
-            className={`flex-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              isLoading ? 'bg-gray-100 cursor-not-allowed' : ''
-            }`}
-            placeholder='Add an allergy (e.g., Penicillin, Peanuts, Latex)'
+            value={newAllergy}
+            onChange={e => setNewAllergy(e.target.value)}
+            onKeyPress={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddAllergy();
+              }
+            }}
+            className='flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+            placeholder='Add an allergy (e.g., Penicillin)'
           />
           <button
             type='button'
-            onClick={addAllergy}
-            disabled={!allergyInput.trim() || isLoading}
-            className='px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            onClick={handleAddAllergy}
+            className='inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
           >
-            <FiPlus className='w-4 h-4' />
+            <FiPlus className='w-4 h-4 mr-1' />
+            Add
           </button>
         </div>
-        <div className='flex flex-wrap gap-2 min-h-8'>
-          {formData.allergies.map((allergy, index) => (
-            <span
-              key={index}
-              className='inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-100 text-red-800 border border-red-200'
-            >
-              {allergy}
+
+        {/* Common Allergies Suggestions */}
+        <div className='mb-4'>
+          <p className='text-sm text-gray-600 mb-2'>
+            Common allergies (click to add):
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {commonAllergies.map(allergy => (
               <button
+                key={allergy}
                 type='button'
-                onClick={() => removeAllergy(index)}
-                disabled={isLoading}
-                className='ml-1 hover:text-red-900 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed'
+                onClick={() => handleAllergySuggestionClick(allergy)}
+                className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 transition-colors'
               >
-                <FiX className='w-3 h-3' />
+                {allergy}
               </button>
-            </span>
-          ))}
-          {formData.allergies.length === 0 && (
-            <span className='text-sm text-gray-500 italic'>
-              No allergies recorded
-            </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Current Allergies List */}
+        <div className='mt-4'>
+          {!formData.allergies || formData.allergies.length === 0 ? (
+            <div className='text-sm text-gray-500 italic'>
+              No allergies recorded. Click &quot;Add&quot; or select from common
+              allergies above.
+            </div>
+          ) : (
+            <div className='space-y-2'>
+              {formData.allergies.map((allergy, index) => (
+                <div
+                  key={index}
+                  className='flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-md'
+                >
+                  <div className='flex items-center'>
+                    <span className='text-sm font-medium text-red-800'>
+                      {allergy}
+                    </span>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => handleRemoveAllergy(index)}
+                    className='text-red-400 hover:text-red-600 transition-colors'
+                  >
+                    <FiTrash2 className='w-4 h-4' />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-        {formErrors.allergies && (
-          <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-            <FiAlertTriangle className='w-3 h-3' />
-            {formErrors.allergies}
-          </p>
-        )}
       </div>
 
-      {/* Medications Section */}
+      {/* Current Medications */}
       <div>
-        <label className='block text-sm font-medium text-gray-700 mb-2'>
+        <label className='block text-sm font-medium text-gray-700 mb-1'>
           Current Medications
         </label>
-        <div className='flex gap-2 mb-2'>
+
+        {/* Add Medication Input */}
+        <div className='flex gap-2 mb-3'>
           <input
             type='text'
-            value={medicationInput}
-            onChange={e => setMedicationInput(e.target.value)}
-            onKeyPress={e => handleKeyPress(e, 'medication')}
-            onBlur={() => handleInputBlur('medication')}
-            disabled={isLoading}
-            className={`flex-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              isLoading ? 'bg-gray-100 cursor-not-allowed' : ''
-            }`}
-            placeholder='Add a medication (e.g., Metformin, Lisinopril, Aspirin)'
+            value={newMedication}
+            onChange={e => setNewMedication(e.target.value)}
+            onKeyPress={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddMedication();
+              }
+            }}
+            className='flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+            placeholder='Add a medication (e.g., Metformin 500mg)'
           />
           <button
             type='button'
-            onClick={addMedication}
-            disabled={!medicationInput.trim() || isLoading}
-            className='px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            onClick={handleAddMedication}
+            className='inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
           >
-            <FiPlus className='w-4 h-4' />
+            <FiPlus className='w-4 h-4 mr-1' />
+            Add
           </button>
         </div>
-        <div className='flex flex-wrap gap-2 min-h-8'>
-          {formData.medications.map((medication, index) => (
-            <span
-              key={index}
-              className='inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 border border-green-200'
-            >
-              {medication}
+
+        {/* Common Medications Suggestions */}
+        <div className='mb-4'>
+          <p className='text-sm text-gray-600 mb-2'>
+            Common medications (click to add):
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {commonMedications.map(medication => (
               <button
+                key={medication}
                 type='button'
-                onClick={() => removeMedication(index)}
-                disabled={isLoading}
-                className='ml-1 hover:text-green-900 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed'
+                onClick={() => handleMedicationSuggestionClick(medication)}
+                className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 transition-colors'
               >
-                <FiX className='w-3 h-3' />
+                {medication}
               </button>
-            </span>
-          ))}
-          {formData.medications.length === 0 && (
-            <span className='text-sm text-gray-500 italic'>
-              No medications recorded
-            </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Current Medications List */}
+        <div className='mt-4'>
+          {!formData.medications || formData.medications.length === 0 ? (
+            <div className='text-sm text-gray-500 italic'>
+              No medications recorded. Click &quot;Add&quot; or select from
+              common medications above.
+            </div>
+          ) : (
+            <div className='space-y-2'>
+              {formData.medications.map((medication, index) => (
+                <div
+                  key={index}
+                  className='flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-md'
+                >
+                  <div className='flex items-center'>
+                    <span className='text-sm font-medium text-green-800'>
+                      {medication}
+                    </span>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => handleRemoveMedication(index)}
+                    className='text-green-400 hover:text-green-600 transition-colors'
+                  >
+                    <FiTrash2 className='w-4 h-4' />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-        {formErrors.medications && (
-          <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-            <FiAlertTriangle className='w-3 h-3' />
-            {formErrors.medications}
-          </p>
-        )}
       </div>
 
-      {/* Blood Type and Height */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+      {/* Vital Statistics */}
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+        {/* Blood Type */}
         <div>
           <label
             htmlFor='bloodType'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Blood Type
           </label>
@@ -306,35 +466,34 @@ const PatientMedicalInfoForm: React.FC<PatientMedicalInfoFormProps> = ({
             id='bloodType'
             name='bloodType'
             value={formData.bloodType || ''}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            disabled={isLoading}
-            className={`mt-1 block w-full border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.bloodType ? 'border-red-300' : 'border-gray-300'
-            } ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.bloodType
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
           >
-            <option value=''>Select Blood Type</option>
-            <option value='A+'>A+</option>
-            <option value='A-'>A-</option>
-            <option value='B+'>B+</option>
-            <option value='B-'>B-</option>
-            <option value='AB+'>AB+</option>
-            <option value='AB-'>AB-</option>
-            <option value='O+'>O+</option>
-            <option value='O-'>O-</option>
+            <option value=''>Select blood type</option>
+            {bloodTypeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           {formErrors.bloodType && (
-            <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-              <FiAlertTriangle className='w-3 h-3' />
-              {formErrors.bloodType}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.bloodType}</span>
+            </div>
           )}
         </div>
 
+        {/* Height */}
         <div>
           <label
             htmlFor='height'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Height (cm)
           </label>
@@ -342,33 +501,32 @@ const PatientMedicalInfoForm: React.FC<PatientMedicalInfoFormProps> = ({
             type='number'
             id='height'
             name='height'
-            value={formData.height || ''}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            disabled={isLoading}
             min='0'
             max='300'
             step='0.1'
-            className={`mt-1 block w-full border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.height ? 'border-red-300' : 'border-gray-300'
-            } ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            placeholder='Enter height in cm'
+            value={formData.height || ''}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.height
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder='170'
           />
           {formErrors.height && (
-            <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-              <FiAlertTriangle className='w-3 h-3' />
-              {formErrors.height}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.height}</span>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Weight and BMI */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {/* Weight */}
         <div>
           <label
             htmlFor='weight'
-            className='block text-sm font-medium text-gray-700'
+            className='block text-sm font-medium text-gray-700 mb-1'
           >
             Weight (kg)
           </label>
@@ -376,91 +534,163 @@ const PatientMedicalInfoForm: React.FC<PatientMedicalInfoFormProps> = ({
             type='number'
             id='weight'
             name='weight'
-            value={formData.weight || ''}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            disabled={isLoading}
             min='0'
-            max='500'
+            max='300'
             step='0.1'
-            className={`mt-1 block w-full border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              formErrors.weight ? 'border-red-300' : 'border-gray-300'
-            } ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-            placeholder='Enter weight in kg'
+            value={formData.weight || ''}
+            onChange={onChange}
+            onBlur={onBlur}
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+              formErrors.weight
+                ? 'border-red-300 text-red-900 placeholder-red-300 focus:outline-none focus:ring-red-500 focus:border-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder='65'
           />
           {formErrors.weight && (
-            <p className='mt-1 text-sm text-red-600 flex items-center gap-1'>
-              <FiAlertTriangle className='w-3 h-3' />
-              {formErrors.weight}
-            </p>
+            <div className='mt-1 flex items-center gap-1 text-sm text-red-600'>
+              <FiAlertCircle className='w-4 h-4' />
+              <span>{formErrors.weight}</span>
+            </div>
           )}
-        </div>
-
-        {/* BMI Display */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700'>
-            BMI Calculation
-          </label>
-          <div className='mt-1'>
-            {bmi ? (
-              <div
-                className={`border rounded-md p-3 text-center ${getBMIColor(bmi)}`}
-              >
-                <div className='text-lg font-semibold'>{bmi}</div>
-                <div className='text-sm'>{getBMICategory(bmi)}</div>
-              </div>
-            ) : (
-              <div className='border border-gray-300 rounded-md p-3 text-center text-gray-500 bg-gray-50'>
-                <div className='text-sm'>
-                  Enter height and weight to calculate BMI
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Critical Information Alert */}
-      {(formData.allergies.length > 0 || formData.bloodType) && (
-        <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
-          <h4 className='text-sm font-medium text-yellow-800 mb-2 flex items-center gap-2'>
-            <FiInfo className='h-4 w-4' />
-            Critical Medical Information
+      {/* BMI Calculation */}
+      {formData.height && formData.weight && (
+        <div className='p-4 bg-gray-50 border border-gray-200 rounded-md'>
+          <h4 className='text-sm font-medium text-gray-900 mb-2'>
+            Body Mass Index (BMI)
           </h4>
-          <div className='space-y-2 text-sm text-yellow-700'>
-            {formData.allergies.length > 0 && (
-              <div>
-                <span className='font-medium'>Allergies:</span>{' '}
-                {formData.allergies.join(', ')}
+          <div className='flex items-center justify-between'>
+            <div>
+              <div className='text-sm text-gray-600'>
+                Height: {formData.height} cm | Weight: {formData.weight} kg
               </div>
-            )}
-            {formData.bloodType && (
-              <div>
-                <span className='font-medium'>Blood Type:</span>{' '}
-                {formData.bloodType}
+              <div className='mt-1'>
+                <span className='text-lg font-semibold'>
+                  BMI:{' '}
+                  {(
+                    formData.weight /
+                    ((formData.height / 100) * (formData.height / 100))
+                  ).toFixed(1)}
+                </span>
               </div>
-            )}
+            </div>
+            <div className='text-right'>
+              {(() => {
+                const bmi =
+                  formData.weight /
+                  ((formData.height / 100) * (formData.height / 100));
+                let status = '';
+                let color = '';
+
+                if (bmi < 18.5) {
+                  status = 'Underweight';
+                  color = 'text-yellow-600 bg-yellow-100';
+                } else if (bmi < 25) {
+                  status = 'Normal weight';
+                  color = 'text-green-600 bg-green-100';
+                } else if (bmi < 30) {
+                  status = 'Overweight';
+                  color = 'text-orange-600 bg-orange-100';
+                } else {
+                  status = 'Obese';
+                  color = 'text-red-600 bg-red-100';
+                }
+
+                return (
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${color}`}
+                  >
+                    {status}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Help Text */}
-      <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-        <h4 className='text-sm font-medium text-blue-800 mb-2 flex items-center gap-2'>
-          <FiInfo className='h-4 w-4' />
-          Medical Information Guidelines
-        </h4>
-        <ul className='text-sm text-blue-700 space-y-1'>
-          <li>
-            • Include past surgeries, chronic conditions, and major illnesses
-          </li>
-          <li>
-            • List all known allergies including drug, food, and environmental
-          </li>
-          <li>• Include both prescription and over-the-counter medications</li>
-          <li>• Update this information during each patient visit</li>
-          <li>• Blood type and BMI help in emergency situations</li>
-        </ul>
+      {/* Additional Medical Information */}
+      <div>
+        <label
+          htmlFor='additionalMedicalInfo'
+          className='block text-sm font-medium text-gray-700 mb-1'
+        >
+          Additional Medical Information (Optional)
+        </label>
+        <textarea
+          id='additionalMedicalInfo'
+          name='additionalMedicalInfo'
+          rows={3}
+          className='block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm'
+          placeholder='Any other relevant medical information, lifestyle factors, or health concerns...'
+        />
+        <p className='mt-1 text-xs text-gray-500'>
+          Include information about smoking, alcohol consumption, exercise
+          habits, diet, etc.
+        </p>
+      </div>
+
+      {/* No Known Medical Issues */}
+      <div className='pt-6 border-t border-gray-200'>
+        <div className='flex items-center'>
+          <input
+            type='checkbox'
+            id='noMedicalIssues'
+            name='noMedicalIssues'
+            className='h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
+            onChange={e => {
+              if (e.target.checked) {
+                // Clear all medical information
+                const syntheticEvent = {
+                  target: {
+                    name: 'medicalHistory',
+                    value: '',
+                  },
+                } as React.ChangeEvent<HTMLTextAreaElement>;
+                onChange(syntheticEvent);
+
+                onArrayChange('allergies', []);
+                onArrayChange('medications', []);
+
+                const bloodTypeEvent = {
+                  target: {
+                    name: 'bloodType',
+                    value: '',
+                  },
+                } as React.ChangeEvent<HTMLSelectElement>;
+                onChange(bloodTypeEvent);
+
+                const heightEvent = {
+                  target: {
+                    name: 'height',
+                    value: '',
+                  },
+                } as React.ChangeEvent<HTMLInputElement>;
+                onChange(heightEvent);
+
+                const weightEvent = {
+                  target: {
+                    name: 'weight',
+                    value: '',
+                  },
+                } as React.ChangeEvent<HTMLInputElement>;
+                onChange(weightEvent);
+              }
+            }}
+          />
+          <label
+            htmlFor='noMedicalIssues'
+            className='ml-2 block text-sm text-gray-900'
+          >
+            No known medical issues, allergies, or medications
+          </label>
+        </div>
+        <p className='mt-1 text-xs text-gray-500 ml-6'>
+          Check this if the patient has no medical history to report
+        </p>
       </div>
     </div>
   );
