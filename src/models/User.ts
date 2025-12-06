@@ -364,6 +364,7 @@ UserSchema.methods.getSettings = function (this: IUserDocument): UserSettings {
   };
 };
 UserSchema.index({ email: 1 });
+UserSchema.index({ nic: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ department: 1 });

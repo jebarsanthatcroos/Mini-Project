@@ -12,7 +12,7 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import OAuthButtons from '@/components/auth/OAuthButtons';
 import SignInForm from '@/components/auth/SignInForm';
 import StatusMessage from '@/components/ui/StatusMessage';
-import LoadingSkeleton from '@/components/auth/LoadingSkeleton';
+import Loading from '@/components/Loading';
 import AuthHeader from '@/components/auth/AuthHeader';
 import AuthDivider from '@/components/auth/AuthDivider';
 
@@ -113,7 +113,7 @@ export default function SignInPage() {
 
   // Show loading skeleton during SSR
   if (!isMounted) {
-    return <LoadingSkeleton />;
+    return <Loading />;
   }
 
   return (

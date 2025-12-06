@@ -8,7 +8,6 @@ import UserModel, { UserRole } from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
-// Your existing NextAuth configuration and types...
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -66,8 +65,6 @@ declare module 'next-auth/jwt' {
   }
 }
 
-// ==================== Helper Functions ====================
-
 const createUserObject = (user: any) => ({
   id: user._id?.toString() || user.id,
   name: user.name,
@@ -113,7 +110,7 @@ const handleOAuthUser = async (user: any, provider: string) => {
         isActive: true,
         emailVerified: new Date(),
         lastLogin: new Date(),
-        authProvider: provider, // Track which provider created the account
+        authProvider: provider,
       });
       console.log(`New ${provider} user created:`, user.email);
     } else {

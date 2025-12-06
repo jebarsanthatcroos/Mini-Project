@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,8 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
-
-// Validation schema
 export const signupSchema = z
   .object({
     name: z
@@ -18,6 +17,13 @@ export const signupSchema = z
       .string()
       .email('Please enter a valid email address')
       .min(1, 'Email is required'),
+    nic: z
+      .string()
+      .min(1, 'NIC is required')
+      .regex(
+        /^([0-9]{9}[vVxX]|[0-9]{12})$/,
+        'NIC must be either 9 digits followed by V/X or 12 digits'
+      ),
     password: z
       .string()
       .min(6, 'Password must be at least 6 characters')
@@ -37,15 +43,13 @@ export const signupSchema = z
   });
 
 export type SignUpFormData = z.infer<typeof signupSchema>;
-
-// Components
 import AuthLayout from '@/components/auth/AuthLayout';
 import AuthHeader from '@/components/auth/AuthHeader';
 import OAuthButtons from '@/components/auth/OAuthButtons';
 import AuthDivider from '@/components/auth/AuthDivider';
 import SignUpForm from '@/components/auth/SignUpForm';
 import StatusMessage from '@/components/ui/StatusMessage';
-import LoadingSkeleton from '@/components/auth/LoadingSkeleton';
+import Loading from '@/components/Loading';
 import TermsAndPrivacy from '@/components/auth/TermsAndPrivacy';
 
 export default function SignUpPage() {
@@ -71,7 +75,6 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (oauthError) {
-      // eslint-disable-next-line react-hooks/immutability
       setError(getOAuthErrorMessage(oauthError));
     }
   }, [oauthError]);
@@ -128,9 +131,8 @@ export default function SignUpPage() {
     setSuccess('');
   };
 
-  // Show loading skeleton during SSR
   if (!isMounted) {
-    return <LoadingSkeleton />;
+    return <Loading />;
   }
 
   return (

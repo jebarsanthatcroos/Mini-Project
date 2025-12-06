@@ -122,14 +122,16 @@ export default function PharmacistDashboard() {
 
   const fetchPatients = async () => {
     try {
-      // Fetch patients count from your API
       const response = await fetch('/api/pharmacy/patients');
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
+          const patientCount =
+            result.pagination?.total || result.data?.length || 0;
+
           setStats(prev => ({
             ...prev,
-            totalPatienTRts: result.data?.count || 0,
+            totalPatients: patientCount,
           }));
         }
       }
@@ -155,7 +157,7 @@ export default function PharmacistDashboard() {
     );
 
     const totalInventoryValue = pharmaciesData.reduce((sum, pharmacy) => {
-      const pharmacyValue = (pharmacy.inventory?.totalProducts || 0) * 100; // Mock average price
+      const pharmacyValue = (pharmacy.inventory?.totalProducts || 0) * 100;
       return sum + pharmacyValue;
     }, 0);
 
@@ -166,8 +168,8 @@ export default function PharmacistDashboard() {
       totalProducts,
       lowStockAlerts,
       totalInventoryValue,
-      monthlyRevenue: 28450, // Mock data
-      pendingOrders: 23, // Mock data
+      monthlyRevenue: 28450,
+      pendingOrders: 23,
     }));
   };
 
@@ -506,7 +508,7 @@ export default function PharmacistDashboard() {
                 </div>
               </div>
             ) : (
-              <div className='overflow-hidden'>
+              <div className='overflow-x-auto'>
                 <table className='min-w-full divide-y divide-gray-200'>
                   <thead className='bg-gray-50'>
                     <tr>
@@ -550,10 +552,12 @@ export default function PharmacistDashboard() {
                             {pharmacy.contact.email || 'No email'}
                           </div>
                         </td>
-                        <td className='px-6 py-4 whitespace-nowrap'>
+                        <td className='px-6 py-4'>
                           <div className='text-sm text-gray-900 flex items-center'>
-                            <FiMapPin className='w-4 h-4 mr-1' />
-                            {getPharmacyAddress(pharmacy)}
+                            <FiMapPin className='w-4 h-4 mr-1 shrink-0' />
+                            <span className='line-clamp-2'>
+                              {getPharmacyAddress(pharmacy)}
+                            </span>
                           </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
