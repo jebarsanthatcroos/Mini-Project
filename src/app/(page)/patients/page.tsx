@@ -268,15 +268,15 @@ export default function PatientRECEPTIONIST() {
   };
 
   const handleViewPatient = (id: string) => {
-    router.push(`/Receptionist/patients/${id}`);
+    router.push(`/patients/${id}`);
   };
 
   const handleEditPatient = (id: string) => {
-    router.push(`/Receptionist/patients/${id}/edit`);
+    router.push(`/patients/${id}/edit`);
   };
 
   const handleAddPatient = () => {
-    router.push('/Receptionist/patients/new');
+    router.push('/patients/new');
   };
 
   useEffect(() => {

@@ -2,10 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiAlertCircle, FiPlus, FiTrash2, FiInfo } from 'react-icons/fi';
-import {
-  BloodType,
-  IPatientFormData,
-} from '@/app/(page)/Receptionist/patients/new/page';
+import { BloodType, IPatientFormData } from '@/app/(page)/patients/new/page';
 
 interface PatientMedicalInfoFormProps {
   formData: IPatientFormData;

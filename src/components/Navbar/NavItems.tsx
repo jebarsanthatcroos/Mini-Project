@@ -4,7 +4,17 @@ import Link from 'next/link';
 import { motion, Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { FiHome, FiActivity, FiCalendar, FiShoppingCart } from 'react-icons/fi';
+import {
+  FiHome,
+  FiActivity,
+  FiCalendar,
+  FiShoppingCart,
+  FiUsers,
+  FiClipboard,
+  FiDroplet,
+  FiPackage,
+  FiFileText,
+} from 'react-icons/fi';
 
 interface NavItemsProps {
   mobile?: boolean;
@@ -20,6 +30,7 @@ export default function NavItems({
 
   const getDashboardLink = () => {
     if (!user?.role) return '/dashboard';
+
     const roleMap: { [key: string]: string } = {
       ADMIN: '/dashboard/admin',
       DOCTOR: '/dashboard/doctor',
@@ -30,17 +41,108 @@ export default function NavItems({
       STAFF: '/dashboard/staff',
       PATIENT: '/dashboard/patient',
     };
+
     return roleMap[user.role] || '/dashboard';
   };
 
-  const navigation = [
-    { name: 'Home', href: '/', icon: FiHome },
-    { name: 'shop', href: '/shop/pharmacy', icon: FiShoppingCart },
-    { name: 'Appointments', href: '/booking', icon: FiCalendar },
-    ...(isAuthenticated
+  const getRoleBasedNavigation = () => {
+    const baseNavigation = [{ name: 'Home', href: '/', icon: FiHome }];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const roleSpecificItems: { [key: string]: any[] } = {
+      PATIENT: [
+        { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+        { name: 'Shop', href: '/shop/pharmacy', icon: FiShoppingCart },
+        { name: 'Lab Tests', href: '/laboratory', icon: FiDroplet },
+      ],
+      DOCTOR: [
+        {
+          name: 'My Patients',
+          href: '/patients',
+          icon: FiUsers,
+        },
+
+        {
+          name: 'Prescriptions',
+          href: '/doctor/prescriptions',
+          icon: FiClipboard,
+        },
+      ],
+      NURSE: [
+        {
+          name: 'Patient Care',
+          href: '/nurse/patients',
+          icon: FiUsers,
+        },
+        {
+          name: 'Appointments',
+          href: '/nurse/appointments',
+          icon: FiCalendar,
+        },
+      ],
+      RECEPTIONIST: [
+        {
+          name: 'Appointments',
+          href: '/appointments',
+          icon: FiCalendar,
+        },
+        {
+          name: 'Patients',
+          href: '/patients',
+          icon: FiUsers,
+        },
+      ],
+      LABTECH: [
+        { name: 'Test Queue', href: '/dashboard/lab/queue', icon: FiClipboard },
+        { name: 'Lab Tests', href: '/dashboard/lab/tests', icon: FiDroplet },
+        { name: 'Results', href: '/dashboard/lab/results', icon: FiFileText },
+      ],
+      PHARMACIST: [
+        {
+          name: 'Prescriptions',
+          href: '/pharmacy/prescriptions',
+          icon: FiClipboard,
+        },
+        {
+          name: 'Inventory',
+          href: 'pharmacy/inventory',
+          icon: FiPackage,
+        },
+        { name: 'Shop', href: '/pharmacy/shop', icon: FiShoppingCart },
+      ],
+      ADMIN: [
+        { name: 'Users', href: '/dashboard/admin/users', icon: FiUsers },
+        {
+          name: 'Departments',
+          href: '/dashboard/admin/departments',
+          icon: FiActivity,
+        },
+        { name: 'Reports', href: '/dashboard/admin/reports', icon: FiFileText },
+      ],
+      STAFF: [
+        { name: 'Tasks', href: '/dashboard/staff/tasks', icon: FiClipboard },
+        { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+      ],
+    };
+
+    const defaultItems = [
+      { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+      { name: 'Shop', href: '/shop/pharmacy', icon: FiShoppingCart },
+    ];
+
+    const middleItems =
+      isAuthenticated && user?.role
+        ? roleSpecificItems[user.role] || defaultItems
+        : defaultItems;
+
+    const dashboardItem = isAuthenticated
       ? [{ name: 'Dashboard', href: getDashboardLink(), icon: FiActivity }]
-      : []),
-  ];
+      : [];
+
+    return [...baseNavigation, ...middleItems, ...dashboardItem];
+  };
+
+  const navigation = getRoleBasedNavigation();
 
   const itemVariants: Variants = {
     hover: {
@@ -68,33 +170,36 @@ export default function NavItems({
 
   return (
     <>
-      {navigation.map(item => (
-        <motion.div
-          key={item.name}
-          variants={!mobile ? currentVariants : undefined}
-          initial='rest'
-          whileHover={!mobile ? 'hover' : undefined}
-        >
-          <Link
-            href={item.href}
-            onClick={onItemClick}
-            className={`flex items-center space-x-3 ${
-              mobile
-                ? 'px-4 py-4 rounded-2xl text-base font-semibold'
-                : 'px-6 py-3 rounded-2xl text-sm font-semibold'
-            } transition-all duration-300 ${
-              pathname === item.href
-                ? 'text-white bg-linear-to-r from-blue-600 to-purple-600 shadow-lg'
-                : mobile
-                  ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-white/50'
-            }`}
+      {navigation.map(item => {
+        const isActive = pathname === item.href;
+        const Icon = item.icon;
+
+        return (
+          <motion.div
+            key={item.name}
+            variants={currentVariants}
+            whileHover='hover'
           >
-            <item.icon className={mobile ? 'h-5 w-5' : 'h-4 w-4'} />
-            <span>{item.name}</span>
-          </Link>
-        </motion.div>
-      ))}
+            <Link
+              href={item.href}
+              onClick={onItemClick}
+              className={`
+                flex items-center space-x-2 px-4 py-2 rounded-lg
+                transition-all duration-200
+                ${
+                  isActive
+                    ? 'bg-linear-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                }
+                ${mobile ? 'w-full' : ''}
+              `}
+            >
+              <Icon className='h-5 w-5' />
+              <span className='font-medium'>{item.name}</span>
+            </Link>
+          </motion.div>
+        );
+      })}
     </>
   );
 }

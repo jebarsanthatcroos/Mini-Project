@@ -68,6 +68,32 @@ export interface PatientFormData {
   weight?: number;
   isActive?: boolean;
 }
+export interface PatientData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nic: string;
+  dateOfBirth?: string;
+  gender: string;
+  address?: Address;
+  emergencyContact?: EmergencyContact;
+  medicalHistory?: string;
+  allergies?: string[];
+  medications?: string[];
+  insurance?: Insurance;
+  bloodType?: string;
+  height?: number;
+  weight?: number;
+  maritalStatus?: string;
+  occupation?: string;
+  preferredLanguage?: string;
+  lastVisit?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface PatientStats {
   total: number;
@@ -90,6 +116,12 @@ export interface Appointment {
   type: string;
   status: string;
   reason: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
 }
 
 export const patientToFormData = (patient: Patient): PatientFormData => {

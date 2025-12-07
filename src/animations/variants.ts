@@ -1,3 +1,5 @@
+import { Variants } from 'framer-motion';
+
 export const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -34,4 +36,48 @@ export const pageTransition = {
   initial: { opacity: 0, y: -20 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.6 },
+};
+
+export const pageVariants: Variants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
+};
+
+export const cardVariants: Variants = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.4, ease: 'easeOut' },
+  },
+  hover: {
+    scale: 1.02,
+    transition: { duration: 0.2 },
+  },
+};
+
+export const staggerContainer: Variants = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+export const fadeInUp: Variants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+export const slideInFromLeft: Variants = {
+  initial: { opacity: 0, x: -20 },
+  animate: { opacity: 1, x: 0 },
+};
+
+export const slideInFromRight: Variants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
 };
