@@ -49,6 +49,7 @@ export interface AppointmentFormData {
   type: 'CONSULTATION' | 'FOLLOW_UP' | 'CHECKUP' | 'EMERGENCY' | 'OTHER';
   status: 'SCHEDULED' | 'CONFIRMED';
   reason: string;
+  doctorId: string;
   symptoms?: string;
   diagnosis: string;
   prescription: string;

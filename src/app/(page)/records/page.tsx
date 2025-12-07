@@ -20,7 +20,6 @@ import {
   FiBarChart,
   FiImage,
   FiX,
-  FiPrinter,
 } from 'react-icons/fi';
 import Loading from '@/components/Loading';
 import ErrorComponent from '@/components/Error';
@@ -32,6 +31,7 @@ interface Patient {
   email: string;
   dateOfBirth: string;
   gender: string;
+  nic?: string;
 }
 
 interface MedicalRecord {
@@ -96,6 +96,11 @@ export default function MedicalRecordsPage() {
     },
   });
 
+  // NIC Search States
+  const [nicSearch, setNicSearch] = useState('');
+  const [searchingNic, setSearchingNic] = useState(false);
+  const [searchedPatient, setSearchedPatient] = useState<Patient | null>(null);
+
   const [stats, setStats] = useState<RecordStats>({
     total: 0,
     consultations: 0,
@@ -123,7 +128,7 @@ export default function MedicalRecordsPage() {
   const fetchMedicalRecords = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/doctor/records');
+      const response = await fetch('/api/records');
 
       if (!response.ok) {
         throw new Error('Failed to fetch medical records');
@@ -143,6 +148,46 @@ export default function MedicalRecordsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleNicSearch = async () => {
+    if (!nicSearch.trim()) {
+      setError('Please enter a NIC number');
+      return;
+    }
+
+    try {
+      setSearchingNic(true);
+      setError(null);
+
+      const response = await fetch(`/api/patients/search?nic=${nicSearch}`);
+
+      if (!response.ok) {
+        throw new Error('Patient not found');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setSearchedPatient(result.data);
+        // Filter records by this patient
+        setFilters(prev => ({ ...prev, patient: result.data._id }));
+      } else {
+        throw new Error('Patient not found with this NIC');
+      }
+    } catch (error) {
+      console.error('Error searching patient:', error);
+      setError(error instanceof Error ? error.message : 'Patient not found');
+      setSearchedPatient(null);
+    } finally {
+      setSearchingNic(false);
+    }
+  };
+
+  const clearNicSearch = () => {
+    setNicSearch('');
+    setSearchedPatient(null);
+    setFilters(prev => ({ ...prev, patient: '' }));
   };
 
   const filterRecords = () => {
@@ -225,121 +270,6 @@ export default function MedicalRecordsPage() {
     });
   };
 
-  const getRecordTypeIcon = (type: string) => {
-    switch (type) {
-      case 'CONSULTATION':
-        return <FiUser className='w-4 h-4 text-blue-500' />;
-      case 'LAB_RESULT':
-        return <FiBarChart className='w-4 h-4 text-green-500' />;
-      case 'IMAGING':
-        return <FiImage className='w-4 h-4 text-purple-500' />;
-      case 'ECG':
-        return <FiActivity className='w-4 h-4 text-red-500' />;
-      case 'PRESCRIPTION':
-        return <FiFileText className='w-4 h-4 text-orange-500' />;
-      case 'PROGRESS_NOTE':
-        return <FiClock className='w-4 h-4 text-yellow-500' />;
-      case 'SURGICAL_REPORT':
-        return <FiScissors className='w-4 h-4 text-pink-500' />;
-      case 'DISCHARGE_SUMMARY':
-        return <FiCheckCircle className='w-4 h-4 text-teal-500' />;
-      default:
-        return <FiFileText className='w-4 h-4 text-gray-500' />;
-    }
-  };
-
-  const getRecordTypeColor = (type: string) => {
-    switch (type) {
-      case 'CONSULTATION':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'LAB_RESULT':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'IMAGING':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'ECG':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'PRESCRIPTION':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'PROGRESS_NOTE':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'SURGICAL_REPORT':
-        return 'bg-pink-100 text-pink-800 border-pink-200';
-      case 'DISCHARGE_SUMMARY':
-        return 'bg-teal-100 text-teal-800 border-teal-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getRecordTypeLabel = (type: string) => {
-    switch (type) {
-      case 'CONSULTATION':
-        return 'Consultation';
-      case 'LAB_RESULT':
-        return 'Lab Result';
-      case 'IMAGING':
-        return 'Imaging';
-      case 'ECG':
-        return 'ECG Report';
-      case 'PRESCRIPTION':
-        return 'Prescription';
-      case 'PROGRESS_NOTE':
-        return 'Progress Note';
-      case 'SURGICAL_REPORT':
-        return 'Surgical Report';
-      case 'DISCHARGE_SUMMARY':
-        return 'Discharge Summary';
-      case 'OTHER':
-        return 'Other';
-      default:
-        return type;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <FiClock className='w-3 h-3 text-blue-500' />;
-      case 'COMPLETED':
-        return <FiCheckCircle className='w-3 h-3 text-green-500' />;
-      case 'ARCHIVED':
-        return <FiFileText className='w-3 h-3 text-gray-500' />;
-      default:
-        return <FiFileText className='w-3 h-3 text-gray-500' />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'COMPLETED':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'ARCHIVED':
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const calculateAge = (dateOfBirth: string) => {
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
@@ -356,6 +286,81 @@ export default function MedicalRecordsPage() {
     return age;
   };
 
+  const getRecordTypeIcon = (type: string) => {
+    switch (type) {
+      case 'CONSULTATION':
+        return <FiUser className='w-4 h-4 text-blue-500' />;
+      case 'LAB_RESULT':
+        return <FiBarChart className='w-4 h-4 text-green-500' />;
+      case 'IMAGING':
+        return <FiImage className='w-4 h-4 text-purple-500' />;
+      case 'PRESCRIPTION':
+        return <FiFileText className='w-4 h-4 text-orange-500' />;
+      default:
+        return <FiFileText className='w-4 h-4 text-gray-500' />;
+    }
+  };
+
+  const getRecordTypeColor = (type: string) => {
+    switch (type) {
+      case 'CONSULTATION':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'LAB_RESULT':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'IMAGING':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PRESCRIPTION':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getRecordTypeLabel = (type: string) => {
+    const labels: { [key: string]: string } = {
+      CONSULTATION: 'Consultation',
+      LAB_RESULT: 'Lab Result',
+      IMAGING: 'Imaging',
+      ECG: 'ECG Report',
+      PRESCRIPTION: 'Prescription',
+      PROGRESS_NOTE: 'Progress Note',
+      SURGICAL_REPORT: 'Surgical Report',
+      DISCHARGE_SUMMARY: 'Discharge Summary',
+      OTHER: 'Other',
+    };
+    return labels[type] || type;
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <FiClock className='w-3 h-3 text-blue-500' />;
+      case 'COMPLETED':
+        return <FiCheckCircle className='w-3 h-3 text-green-500' />;
+      default:
+        return <FiFileText className='w-3 h-3 text-gray-500' />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'COMPLETED':
+        return 'bg-green-50 text-green-700 border-green-200';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-LK', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   const clearFilters = () => {
     setFilters({
       recordType: '',
@@ -367,6 +372,7 @@ export default function MedicalRecordsPage() {
       },
     });
     setSearchTerm('');
+    clearNicSearch();
   };
 
   const getUniquePatients = () => {
@@ -378,11 +384,11 @@ export default function MedicalRecordsPage() {
   };
 
   const handleViewRecord = (recordId: string) => {
-    router.push(`/doctor/records/${recordId}`);
+    router.push(`/records/${recordId}`);
   };
 
   const handleCreateRecord = () => {
-    router.push('/doctor/records/new');
+    router.push('/records/new');
   };
 
   const handleSelectRecord = (recordId: string) => {
@@ -401,132 +407,8 @@ export default function MedicalRecordsPage() {
     }
   };
 
-  const handleBulkAction = async () => {
-    if (!bulkAction || selectedRecords.length === 0) return;
-
-    try {
-      // Implement bulk actions based on selection
-      switch (bulkAction) {
-        case 'download':
-          // Download selected records
-          await handleBulkDownload();
-          break;
-        case 'archive':
-          // Archive selected records
-          await handleBulkArchive();
-          break;
-        case 'delete':
-          // Delete selected records
-          await handleBulkDelete();
-          break;
-        default:
-          break;
-      }
-
-      setBulkAction('');
-      setSelectedRecords([]);
-    } catch (error) {
-      console.error('Error performing bulk action:', error);
-      setError('Failed to perform bulk action');
-    }
-  };
-
-  const handleBulkDownload = async () => {
-    // Implement bulk download logic
-    console.log('Downloading records:', selectedRecords);
-  };
-
-  const handleBulkArchive = async () => {
-    // Implement bulk archive logic
-    console.log('Archiving records:', selectedRecords);
-  };
-
-  const handleBulkDelete = async () => {
-    if (
-      !confirm(
-        `Are you sure you want to delete ${selectedRecords.length} records? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-    // Implement bulk delete logic
-    console.log('Deleting records:', selectedRecords);
-  };
-
-  const handleDownloadFile = async (filename: string, recordId: string) => {
-    try {
-      setDownloading(recordId);
-      const response = await fetch(
-        `/api/doctor/records/download?filename=${filename}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      setError('Failed to download file');
-    } finally {
-      setDownloading(null);
-    }
-  };
-
-  const getFileIcon = (filename: string) => {
-    const extension = filename.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(extension || '')) {
-      return <FiImage className='w-3 h-3 text-green-500' />;
-    } else if (extension === 'pdf') {
-      return <FiFileText className='w-3 h-3 text-red-500' />;
-    } else {
-      return <FiFileText className='w-3 h-3 text-blue-500' />;
-    }
-  };
-
-  // Mock FiActivity and FiScissors icons (replace with actual imports if available)
-  const FiActivity = ({ className }: { className?: string }) => (
-    <svg
-      className={className}
-      fill='none'
-      stroke='currentColor'
-      viewBox='0 0 24 24'
-    >
-      <path
-        strokeLinecap='round'
-        strokeLinejoin='round'
-        strokeWidth={2}
-        d='M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
-      />
-    </svg>
-  );
-
-  const FiScissors = ({ className }: { className?: string }) => (
-    <svg
-      className={className}
-      fill='none'
-      stroke='currentColor'
-      viewBox='0 0 24 24'
-    >
-      <path
-        strokeLinecap='round'
-        strokeLinejoin='round'
-        strokeWidth={2}
-        d='M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z'
-      />
-    </svg>
-  );
-
   if (loading) return <Loading />;
-  if (error) return <ErrorComponent message={error} />;
+  if (error && !searchedPatient) return <ErrorComponent message={error} />;
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
@@ -551,6 +433,84 @@ export default function MedicalRecordsPage() {
               New Record
             </button>
           </div>
+        </div>
+
+        {/* NIC Search Section */}
+        <div className='mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6'>
+          <h2 className='text-lg font-semibold text-gray-900 mb-4'>
+            Search by NIC Number
+          </h2>
+          <div className='flex gap-3'>
+            <div className='flex-1'>
+              <input
+                type='text'
+                value={nicSearch}
+                onChange={e => setNicSearch(e.target.value)}
+                placeholder='Enter patient NIC number...'
+                className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                onKeyPress={e => {
+                  if (e.key === 'Enter') {
+                    handleNicSearch();
+                  }
+                }}
+              />
+            </div>
+            <button
+              onClick={handleNicSearch}
+              disabled={searchingNic}
+              className='px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors'
+            >
+              {searchingNic ? 'Searching...' : 'Search'}
+            </button>
+            {searchedPatient && (
+              <button
+                onClick={clearNicSearch}
+                className='px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors'
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Patient Details Display */}
+          {searchedPatient && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className='mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'
+            >
+              <div className='flex items-center justify-between mb-3'>
+                <h3 className='font-semibold text-blue-900'>Patient Details</h3>
+                <span className='text-sm text-blue-700'>
+                  Showing records for this patient
+                </span>
+              </div>
+              <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm'>
+                <div>
+                  <p className='text-blue-600 font-medium'>Name</p>
+                  <p className='text-blue-900'>
+                    {searchedPatient.firstName} {searchedPatient.lastName}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-blue-600 font-medium'>Email</p>
+                  <p className='text-blue-900'>{searchedPatient.email}</p>
+                </div>
+                <div>
+                  <p className='text-blue-600 font-medium'>Age</p>
+                  <p className='text-blue-900'>
+                    {calculateAge(searchedPatient.dateOfBirth)} years
+                  </p>
+                </div>
+                <div>
+                  <p className='text-blue-600 font-medium'>Gender</p>
+                  <p className='text-blue-900 capitalize'>
+                    {searchedPatient.gender.toLowerCase()}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Statistics Cards */}
@@ -646,46 +606,6 @@ export default function MedicalRecordsPage() {
           </div>
         </div>
 
-        {/* Bulk Actions */}
-        {selectedRecords.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className='mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4'
-          >
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-4'>
-                <span className='text-blue-800 font-medium'>
-                  {selectedRecords.length} record(s) selected
-                </span>
-                <select
-                  value={bulkAction}
-                  onChange={e => setBulkAction(e.target.value)}
-                  className='px-3 py-1 border border-blue-300 rounded-lg bg-white text-blue-900'
-                >
-                  <option value=''>Bulk Actions</option>
-                  <option value='download'>Download Selected</option>
-                  <option value='archive'>Archive Selected</option>
-                  <option value='delete'>Delete Selected</option>
-                </select>
-                <button
-                  onClick={handleBulkAction}
-                  disabled={!bulkAction}
-                  className='px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  Apply
-                </button>
-              </div>
-              <button
-                onClick={() => setSelectedRecords([])}
-                className='text-blue-600 hover:text-blue-800'
-              >
-                <FiX className='w-5 h-5' />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
         {/* Search and Filters */}
         <div className='mb-6'>
           <div className='flex flex-col sm:flex-row gap-4'>
@@ -694,7 +614,7 @@ export default function MedicalRecordsPage() {
               <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
               <input
                 type='text'
-                placeholder='Search records by title, description, patient name, or doctor notes...'
+                placeholder='Search records by title, description, patient name...'
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
@@ -710,9 +630,7 @@ export default function MedicalRecordsPage() {
               Filters
               {(filters.recordType ||
                 filters.status ||
-                filters.patient ||
-                filters.dateRange.start ||
-                filters.dateRange.end) && (
+                filters.dateRange.start) && (
                 <span className='w-2 h-2 bg-blue-500 rounded-full'></span>
               )}
             </button>
@@ -722,8 +640,7 @@ export default function MedicalRecordsPage() {
               filters.recordType ||
               filters.status ||
               filters.patient ||
-              filters.dateRange.start ||
-              filters.dateRange.end) && (
+              filters.dateRange.start) && (
               <button
                 onClick={clearFilters}
                 className='px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors'
@@ -741,7 +658,7 @@ export default function MedicalRecordsPage() {
               exit={{ opacity: 0, height: 0 }}
               className='mt-4 p-4 bg-white border border-gray-200 rounded-lg'
             >
-              <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                 {/* Record Type Filter */}
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-2'>
@@ -761,12 +678,7 @@ export default function MedicalRecordsPage() {
                     <option value='CONSULTATION'>Consultation</option>
                     <option value='LAB_RESULT'>Lab Result</option>
                     <option value='IMAGING'>Imaging</option>
-                    <option value='ECG'>ECG Report</option>
                     <option value='PRESCRIPTION'>Prescription</option>
-                    <option value='PROGRESS_NOTE'>Progress Note</option>
-                    <option value='SURGICAL_REPORT'>Surgical Report</option>
-                    <option value='DISCHARGE_SUMMARY'>Discharge Summary</option>
-                    <option value='OTHER'>Other</option>
                   </select>
                 </div>
 
@@ -789,31 +701,10 @@ export default function MedicalRecordsPage() {
                   </select>
                 </div>
 
-                {/* Patient Filter */}
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-2'>
-                    Patient
-                  </label>
-                  <select
-                    value={filters.patient}
-                    onChange={e =>
-                      setFilters(prev => ({ ...prev, patient: e.target.value }))
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                  >
-                    <option value=''>All Patients</option>
-                    {getUniquePatients().map(patient => (
-                      <option key={patient._id} value={patient._id}>
-                        {patient.firstName} {patient.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Date Range */}
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-2'>
-                    Date Range
+                    Date From
                   </label>
                   <input
                     type='date'
@@ -841,50 +732,13 @@ export default function MedicalRecordsPage() {
                 No medical records found
               </h3>
               <p className='text-gray-500 mb-6'>
-                {searchTerm ||
-                filters.recordType ||
-                filters.status ||
-                filters.patient ||
-                filters.dateRange.start
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by creating your first medical record'}
+                {searchedPatient
+                  ? 'No records found for this patient'
+                  : 'Try adjusting your search or filters'}
               </p>
-              {!searchTerm &&
-                !filters.recordType &&
-                !filters.status &&
-                !filters.patient &&
-                !filters.dateRange.start && (
-                  <button
-                    onClick={handleCreateRecord}
-                    className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
-                  >
-                    <FiPlus className='w-4 h-4' />
-                    New Medical Record
-                  </button>
-                )}
             </div>
           ) : (
             <div className='divide-y divide-gray-200'>
-              {/* Table Header */}
-              <div className='p-6 bg-gray-50 flex items-center gap-4'>
-                <input
-                  type='checkbox'
-                  checked={
-                    selectedRecords.length === filteredRecords.length &&
-                    filteredRecords.length > 0
-                  }
-                  onChange={handleSelectAll}
-                  className='rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                />
-                <div className='flex-1 grid grid-cols-12 gap-4 text-sm font-medium text-gray-900'>
-                  <div className='col-span-4'>Record & Patient</div>
-                  <div className='col-span-2'>Type</div>
-                  <div className='col-span-2'>Date</div>
-                  <div className='col-span-2'>Status</div>
-                  <div className='col-span-2 text-right'>Actions</div>
-                </div>
-              </div>
-
               {filteredRecords.map(record => (
                 <motion.div
                   key={record._id}
@@ -892,68 +746,32 @@ export default function MedicalRecordsPage() {
                   animate={{ opacity: 1 }}
                   className='p-6 hover:bg-gray-50 transition-colors'
                 >
-                  <div className='flex items-start gap-4'>
-                    <input
-                      type='checkbox'
-                      checked={selectedRecords.includes(record._id)}
-                      onChange={() => handleSelectRecord(record._id)}
-                      className='mt-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                    />
-
-                    <div className='flex-1 grid grid-cols-12 gap-4 items-start'>
-                      {/* Record & Patient Info */}
-                      <div className='col-span-4'>
-                        <div className='flex items-start gap-3'>
-                          <div className='flex-1'>
-                            <h3 className='font-semibold text-gray-900 mb-1'>
-                              {record.title}
-                            </h3>
-                            <p className='text-gray-600 text-sm mb-2 line-clamp-2'>
-                              {record.description}
-                            </p>
-                            <div className='flex items-center gap-2 text-sm text-gray-500'>
-                              <FiUser className='w-4 h-4' />
-                              <span>
-                                {record.patientId.firstName}{' '}
-                                {record.patientId.lastName}
-                              </span>
-                              <span>•</span>
-                              <span>
-                                {calculateAge(record.patientId.dateOfBirth)}{' '}
-                                years
-                              </span>
-                              <span>•</span>
-                              <span className='capitalize'>
-                                {record.patientId.gender.toLowerCase()}
-                              </span>
-                            </div>
-                          </div>
+                  <div className='flex items-start justify-between'>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-gray-900 mb-1'>
+                        {record.title}
+                      </h3>
+                      <p className='text-gray-600 text-sm mb-2'>
+                        {record.description}
+                      </p>
+                      <div className='flex items-center gap-4 text-sm text-gray-500'>
+                        <div className='flex items-center gap-1'>
+                          <FiUser className='w-4 h-4' />
+                          <span>
+                            {record.patientId.firstName}{' '}
+                            {record.patientId.lastName}
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Record Type */}
-                      <div className='col-span-2'>
+                        <div className='flex items-center gap-1'>
+                          <FiCalendar className='w-4 h-4' />
+                          <span>{formatDate(record.date)}</span>
+                        </div>
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getRecordTypeColor(record.recordType)}`}
                         >
                           {getRecordTypeIcon(record.recordType)}
                           {getRecordTypeLabel(record.recordType)}
                         </span>
-                      </div>
-
-                      {/* Date */}
-                      <div className='col-span-2'>
-                        <div className='flex items-center gap-1 text-sm text-gray-600'>
-                          <FiCalendar className='w-4 h-4' />
-                          <span>{formatDate(record.date)}</span>
-                        </div>
-                        <p className='text-xs text-gray-500 mt-1'>
-                          Created {formatDate(record.createdAt)}
-                        </p>
-                      </div>
-
-                      {/* Status */}
-                      <div className='col-span-2'>
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(record.status)}`}
                         >
@@ -962,73 +780,24 @@ export default function MedicalRecordsPage() {
                             record.status.slice(1).toLowerCase()}
                         </span>
                       </div>
-
-                      {/* Actions */}
-                      <div className='col-span-2'>
-                        <div className='flex items-center gap-2 justify-end'>
-                          {/* File Download Buttons */}
-                          {record.attachments
-                            .slice(0, 2)
-                            .map((filename, index) => (
-                              <button
-                                key={index}
-                                onClick={() =>
-                                  handleDownloadFile(filename, record._id)
-                                }
-                                disabled={downloading === record._id}
-                                className='p-1 text-gray-400 hover:text-blue-600 transition-colors'
-                                title={`Download ${filename}`}
-                              >
-                                {getFileIcon(filename)}
-                              </button>
-                            ))}
-                          {record.attachments.length > 2 && (
-                            <span
-                              className='text-xs text-gray-500'
-                              title={`${record.attachments.length - 2} more files`}
-                            >
-                              +{record.attachments.length - 2}
-                            </span>
-                          )}
-
-                          <button
-                            onClick={() => handleViewRecord(record._id)}
-                            className='flex items-center gap-1 px-2 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors'
-                          >
-                            <FiEye className='w-4 h-4' />
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              router.push(`/doctor/records/${record._id}/edit`)
-                            }
-                            className='flex items-center gap-1 px-2 py-1 text-green-600 hover:bg-green-50 rounded transition-colors'
-                          >
-                            <FiEdit className='w-4 h-4' />
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Additional Information */}
-                  <div className='mt-3 pt-3 border-t border-gray-200'>
-                    <div className='flex flex-wrap items-center gap-4 text-sm text-gray-500'>
-                      {record.attachments.length > 0 && (
-                        <div className='flex items-center gap-1'>
-                          <FiDownload className='w-4 h-4' />
-                          <span>{record.attachments.length} file(s)</span>
-                        </div>
-                      )}
-
-                      {record.doctorNotes && (
-                        <div className='flex items-center gap-1 flex-1 min-w-0'>
-                          <FiFileText className='w-4 h-4 shrink-0' />
-                          <span className='truncate' title={record.doctorNotes}>
-                            {record.doctorNotes}
-                          </span>
-                        </div>
-                      )}
+                    <div className='flex items-center gap-2'>
+                      <button
+                        onClick={() => handleViewRecord(record._id)}
+                        className='flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors'
+                      >
+                        <FiEye className='w-4 h-4' />
+                        View
+                      </button>
+                      <button
+                        onClick={() =>
+                          router.push(`/records/${record._id}/edit`)
+                        }
+                        className='flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded transition-colors'
+                      >
+                        <FiEdit className='w-4 h-4' />
+                        Edit
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -1037,23 +806,10 @@ export default function MedicalRecordsPage() {
           )}
         </div>
 
-        {/* Pagination and Load More */}
+        {/* Results Summary */}
         {filteredRecords.length > 0 && (
-          <div className='mt-6 flex flex-col sm:flex-row items-center justify-between gap-4'>
-            <div className='text-sm text-gray-600'>
-              Showing {filteredRecords.length} of {records.length} records
-            </div>
-
-            <div className='flex items-center gap-2'>
-              <button className='flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-                <FiArrowRight className='w-4 h-4 rotate-180' />
-                Previous
-              </button>
-              <button className='flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-                Next
-                <FiArrowRight className='w-4 h-4' />
-              </button>
-            </div>
+          <div className='mt-6 text-center text-sm text-gray-600'>
+            Showing {filteredRecords.length} of {records.length} records
           </div>
         )}
       </div>

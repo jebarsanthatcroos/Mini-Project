@@ -76,7 +76,7 @@ export default function MedicalRecordDetailPage() {
   const fetchRecord = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/doctor/records/${recordId}`);
+      const response = await fetch(`/api/records/${recordId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch record');
@@ -100,7 +100,7 @@ export default function MedicalRecordDetailPage() {
   const handleDelete = async () => {
     try {
       setDeleteLoading(true);
-      const response = await fetch(`/api/doctor/records/${recordId}`, {
+      const response = await fetch(`/api/records/${recordId}`, {
         method: 'DELETE',
       });
 
@@ -111,7 +111,7 @@ export default function MedicalRecordDetailPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push('/doctor/records');
+        router.push('/records');
       } else {
         throw new Error(result.message || 'Failed to delete record');
       }
@@ -127,7 +127,7 @@ export default function MedicalRecordDetailPage() {
   const handleDownload = async (filename: string) => {
     try {
       const response = await fetch(
-        `/api/doctor/records/download?filename=${filename}`
+        `/api/records/download?filename=${filename}`
       );
 
       if (!response.ok) {
@@ -186,7 +186,7 @@ export default function MedicalRecordDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('en-LK', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -222,7 +222,7 @@ export default function MedicalRecordDetailPage() {
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-4'>
               <button
-                onClick={() => router.push('/doctor/records')}
+                onClick={() => router.push('/records')}
                 className='flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors'
               >
                 <FiArrowLeft className='w-5 h-5' />
@@ -249,7 +249,7 @@ export default function MedicalRecordDetailPage() {
                 Print
               </button>
               <button
-                onClick={() => router.push(`/doctor/records/${recordId}/edit`)}
+                onClick={() => router.push(`/records/${recordId}/edit`)}
                 className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
               >
                 <FiEdit className='w-4 h-4' />
@@ -668,9 +668,7 @@ export default function MedicalRecordDetailPage() {
 
               <div className='space-y-3'>
                 <button
-                  onClick={() =>
-                    router.push(`/doctor/records/${recordId}/edit`)
-                  }
+                  onClick={() => router.push(`/records/${recordId}/edit`)}
                   className='w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
                 >
                   <FiEdit className='w-4 h-4' />
@@ -686,7 +684,7 @@ export default function MedicalRecordDetailPage() {
                 </button>
 
                 <button
-                  onClick={() => router.push('/doctor/records')}
+                  onClick={() => router.push('/records')}
                   className='w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors'
                 >
                   <FiArrowLeft className='w-4 h-4' />

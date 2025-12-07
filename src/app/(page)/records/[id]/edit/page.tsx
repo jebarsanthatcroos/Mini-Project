@@ -102,7 +102,7 @@ export default function EditMedicalRecordPage() {
   const fetchRecord = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/doctor/records/${recordId}`);
+      const response = await fetch(`/api/records/${recordId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch record');
@@ -179,7 +179,7 @@ export default function EditMedicalRecordPage() {
         submitData.append('attachments', file);
       });
 
-      const response = await fetch(`/api/doctor/records/${recordId}`, {
+      const response = await fetch(`/api/records/${recordId}`, {
         method: 'PUT',
         body: submitData,
       });
@@ -192,7 +192,7 @@ export default function EditMedicalRecordPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push(`/doctor/records/${recordId}`);
+        router.push(`/records/${recordId}`);
       } else {
         throw new Error(result.message || 'Failed to update record');
       }
@@ -276,7 +276,7 @@ export default function EditMedicalRecordPage() {
   const handleDownload = async (filename: string) => {
     try {
       const response = await fetch(
-        `/api/doctor/records/download?filename=${filename}`
+        `/api/records/download?filename=${filename}`
       );
 
       if (!response.ok) {
@@ -331,10 +331,10 @@ export default function EditMedicalRecordPage() {
         'You have unsaved changes. Are you sure you want to leave?'
       );
       if (confirmLeave) {
-        router.push(`/doctor/records/${recordId}`);
+        router.push(`/records/${recordId}`);
       }
     } else {
-      router.push(`/doctor/records/${recordId}`);
+      router.push(`/records/${recordId}`);
     }
   };
 

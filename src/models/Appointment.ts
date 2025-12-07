@@ -9,7 +9,11 @@ export type AppointmentStatus =
   | 'CANCELLED'
   | 'NO_SHOW';
 
-export type ServiceType =
+export type AppointmentType =
+  | 'CONSULTATION'
+  | 'FOLLOW_UP'
+  | 'EMERGENCY'
+  | 'CHECKUP'
   | 'MEDICATION_REVIEW'
   | 'CHRONIC_DISEASE_MANAGEMENT'
   | 'VACCINATION'
@@ -19,14 +23,19 @@ export type ServiceType =
 
 export interface IAppointment {
   patient: Types.ObjectId;
-  pharmacist: Types.ObjectId;
-  pharmacy: Types.ObjectId;
+  doctor?: Types.ObjectId;
+  pharmacist?: Types.ObjectId;
+  pharmacy?: Types.ObjectId;
   appointmentDate: Date;
   appointmentTime: string;
   duration: number;
-  serviceType: ServiceType;
+  type: AppointmentType;
+  serviceType?: AppointmentType; // Alias for backward compatibility
   status: AppointmentStatus;
   reason: string;
+  symptoms?: string;
+  diagnosis?: string;
+  prescription?: string;
   notes?: string;
   prescriptionRefills?: {
     medication: string;
@@ -68,6 +77,10 @@ export interface IAppointmentDocument extends IAppointment, Document {
 
 // Static methods interface
 export interface IAppointmentModel extends Model<IAppointmentDocument> {
+  findByDoctor(
+    doctorId: Types.ObjectId,
+    filters?: any
+  ): Promise<IAppointmentDocument[]>;
   findByPharmacist(
     pharmacistId: Types.ObjectId,
     filters?: any
@@ -75,16 +88,21 @@ export interface IAppointmentModel extends Model<IAppointmentDocument> {
   findByDateRange(
     startDate: Date,
     endDate: Date,
-    pharmacistId?: Types.ObjectId
+    providerId?: Types.ObjectId
+  ): Promise<IAppointmentDocument[]>;
+  findUpcomingByDoctor(
+    doctorId: string,
+    limit?: number
   ): Promise<IAppointmentDocument[]>;
   findUpcomingByPharmacist(
     pharmacistId: string,
     limit?: number
   ): Promise<IAppointmentDocument[]>;
+  findTodayByDoctor(doctorId: string): Promise<IAppointmentDocument[]>;
   findTodayByPharmacist(pharmacistId: string): Promise<IAppointmentDocument[]>;
   findByPatient(patientId: string): Promise<IAppointmentDocument[]>;
   getStats(
-    pharmacistId: Types.ObjectId,
+    providerId: Types.ObjectId,
     startDate: Date,
     endDate: Date
   ): Promise<any[]>;
@@ -97,15 +115,20 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
       ref: 'Patient',
       required: [true, 'Patient is required'],
     },
+    doctor: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+    },
     pharmacist: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Pharmacist is required'],
+      required: false,
     },
     pharmacy: {
       type: Schema.Types.ObjectId,
       ref: 'Pharmacy',
-      required: [true, 'Pharmacy is required'],
+      required: false,
     },
     appointmentDate: {
       type: Date,
@@ -131,9 +154,13 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
       min: [15, 'Duration must be at least 15 minutes'],
       max: [120, 'Duration cannot exceed 120 minutes'],
     },
-    serviceType: {
+    type: {
       type: String,
       enum: [
+        'CONSULTATION',
+        'FOLLOW_UP',
+        'EMERGENCY',
+        'CHECKUP',
         'MEDICATION_REVIEW',
         'CHRONIC_DISEASE_MANAGEMENT',
         'VACCINATION',
@@ -141,7 +168,23 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
         'PRESCRIPTION_CONSULTATION',
         'OTHER',
       ],
-      required: [true, 'Service type is required'],
+      required: [true, 'Appointment type is required'],
+    },
+    serviceType: {
+      type: String,
+      enum: [
+        'CONSULTATION',
+        'FOLLOW_UP',
+        'EMERGENCY',
+        'CHECKUP',
+        'MEDICATION_REVIEW',
+        'CHRONIC_DISEASE_MANAGEMENT',
+        'VACCINATION',
+        'HEALTH_SCREENING',
+        'PRESCRIPTION_CONSULTATION',
+        'OTHER',
+      ],
+      required: false,
     },
     status: {
       type: String,
@@ -160,6 +203,21 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
       required: [true, 'Reason for appointment is required'],
       trim: true,
       maxlength: [500, 'Reason cannot exceed 500 characters'],
+    },
+    symptoms: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Symptoms cannot exceed 1000 characters'],
+    },
+    diagnosis: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Diagnosis cannot exceed 1000 characters'],
+    },
+    prescription: {
+      type: String,
+      trim: true,
+      maxlength: [2000, 'Prescription cannot exceed 2000 characters'],
     },
     notes: {
       type: String,
@@ -253,6 +311,22 @@ const AppointmentSchema = new Schema<IAppointmentDocument, IAppointmentModel>(
   }
 );
 
+// Pre-save middleware to sync type and serviceType
+AppointmentSchema.pre('save', function (next) {
+  if (this.type && !this.serviceType) {
+    this.serviceType = this.type;
+  }
+  next();
+});
+
+// Validation: Either doctor or pharmacist must be present
+AppointmentSchema.pre('save', function (next) {
+  if (!this.doctor && !this.pharmacist) {
+    next(new Error('Either doctor or pharmacist is required'));
+  }
+  next();
+});
+
 // Virtuals
 AppointmentSchema.virtual('isUpcoming').get(function (
   this: IAppointmentDocument
@@ -337,7 +411,54 @@ AppointmentSchema.methods.recordVitalSigns = function (
   this.vitalSigns = { ...this.vitalSigns, ...vitals };
 };
 
-// Static Methods
+// Static Methods for Doctor appointments
+AppointmentSchema.statics.findByDoctor = function (
+  doctorId: Types.ObjectId,
+  filters: any = {}
+) {
+  const query = { doctor: doctorId, isActive: true, ...filters };
+  return this.find(query)
+    .populate('patient')
+    .sort({ appointmentDate: 1, appointmentTime: 1 })
+    .exec();
+};
+
+AppointmentSchema.statics.findUpcomingByDoctor = function (
+  doctorId: string,
+  limit: number = 10
+) {
+  const now = new Date();
+  return this.find({
+    doctor: doctorId,
+    appointmentDate: { $gte: now },
+    status: { $in: ['SCHEDULED', 'CONFIRMED'] },
+    isActive: true,
+  })
+    .populate('patient')
+    .sort({ appointmentDate: 1, appointmentTime: 1 })
+    .limit(limit)
+    .exec();
+};
+
+AppointmentSchema.statics.findTodayByDoctor = function (doctorId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return this.find({
+    doctor: doctorId,
+    appointmentDate: { $gte: today, $lt: tomorrow },
+    status: { $in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] },
+    isActive: true,
+  })
+    .populate('patient')
+    .sort({ appointmentTime: 1 })
+    .exec();
+};
+
+// Static Methods for Pharmacist appointments
 AppointmentSchema.statics.findByPharmacist = function (
   pharmacistId: Types.ObjectId,
   filters: any = {}
@@ -353,15 +474,15 @@ AppointmentSchema.statics.findByPharmacist = function (
 AppointmentSchema.statics.findByDateRange = function (
   startDate: Date,
   endDate: Date,
-  pharmacistId?: Types.ObjectId
+  providerId?: Types.ObjectId
 ) {
   const query: any = {
     appointmentDate: { $gte: startDate, $lte: endDate },
     isActive: true,
   };
 
-  if (pharmacistId) {
-    query.pharmacist = pharmacistId;
+  if (providerId) {
+    query.$or = [{ doctor: providerId }, { pharmacist: providerId }];
   }
 
   return this.find(query)
@@ -427,6 +548,7 @@ AppointmentSchema.statics.findByPatient = function (patientId: string) {
     patient: patientId,
     isActive: true,
   })
+    .populate('doctor', 'firstName lastName email phone')
     .populate('pharmacist', 'firstName lastName email phone')
     .populate('pharmacy', 'name address phone')
     .sort({ appointmentDate: -1, appointmentTime: -1 })
@@ -434,14 +556,14 @@ AppointmentSchema.statics.findByPatient = function (patientId: string) {
 };
 
 AppointmentSchema.statics.getStats = function (
-  pharmacistId: Types.ObjectId,
+  providerId: Types.ObjectId,
   startDate: Date,
   endDate: Date
 ) {
   return this.aggregate([
     {
       $match: {
-        pharmacist: pharmacistId,
+        $or: [{ doctor: providerId }, { pharmacist: providerId }],
         appointmentDate: { $gte: startDate, $lte: endDate },
         isActive: true,
       },
@@ -457,6 +579,7 @@ AppointmentSchema.statics.getStats = function (
 
 // Indexes
 AppointmentSchema.index({ patient: 1 });
+AppointmentSchema.index({ doctor: 1 });
 AppointmentSchema.index({ pharmacist: 1 });
 AppointmentSchema.index({ pharmacy: 1 });
 AppointmentSchema.index({ appointmentDate: 1 });
@@ -464,6 +587,7 @@ AppointmentSchema.index({ status: 1 });
 AppointmentSchema.index({ isActive: 1 });
 AppointmentSchema.index({ createdAt: -1 });
 AppointmentSchema.index({ patient: 1, appointmentDate: -1 });
+AppointmentSchema.index({ doctor: 1, appointmentDate: 1 });
 AppointmentSchema.index({ pharmacist: 1, appointmentDate: 1 });
 
 const Appointment =

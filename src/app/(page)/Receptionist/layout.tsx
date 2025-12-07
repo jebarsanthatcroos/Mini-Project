@@ -2,7 +2,6 @@
 import type { Metadata } from 'next';
 
 import Footer from '@/components/Footer';
-import ReceptionistSidebar from '@/components/Receptionists/Sidebar/ReceptionistSidebar';
 import Navbar from '@/components/Receptionists/Navbar/Navbar';
 
 export const metadata: Metadata = {
@@ -21,13 +20,12 @@ export default function ReceptionistSidebarLayout({
       <Navbar />
 
       <div className='flex h-screen bg-gray-50'>
-        <ReceptionistSidebar />
+        <div className='flex-1 flex flex-col overflow-hidden pt-6'>
+          <main className='flex-1 overflow-auto w-full pt-6  '>
+            {children}
 
-        <div className='flex-1 flex flex-col overflow-hidden'>
-          <main className='flex-1 overflow-auto p-6'>{children}</main>
-
-          {/* Footer stays fixed at bottom */}
-          <Footer />
+            <Footer />
+          </main>
         </div>
       </div>
     </>

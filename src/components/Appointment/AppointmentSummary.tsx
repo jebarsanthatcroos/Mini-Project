@@ -1,16 +1,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Patient, AppointmentFormData } from '@/types/appointment';
+import { DoctorProfile } from '@/types/doctor';
 import { formatAppointmentType, formatTime } from '@/utils/appointmentUtils';
 
 interface AppointmentSummaryProps {
   formData: AppointmentFormData;
   selectedPatient: Patient | undefined;
+  selectedDoctor?: DoctorProfile | undefined;
 }
 
 const AppointmentSummary: React.FC<AppointmentSummaryProps> = ({
   formData,
   selectedPatient,
+  selectedDoctor,
 }) => {
   return (
     <motion.div
@@ -74,8 +77,11 @@ const AppointmentSummary: React.FC<AppointmentSummaryProps> = ({
 
         {selectedPatient && (
           <div className='pt-3 border-t border-gray-200'>
+            <p className='text-xs font-semibold text-gray-700 uppercase mb-2'>
+              Patient Information
+            </p>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>Patient:</span>
+              <span className='text-gray-500'>Name:</span>
               <span className='font-medium text-right'>
                 {selectedPatient.firstName} {selectedPatient.lastName}
               </span>
@@ -86,6 +92,54 @@ const AppointmentSummary: React.FC<AppointmentSummaryProps> = ({
                 {selectedPatient.nic}
               </span>
             </div>
+            {selectedPatient.phone && (
+              <div className='flex justify-between mt-1'>
+                <span className='text-gray-500'>Phone:</span>
+                <span className='font-medium text-right'>
+                  {selectedPatient.phone}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedDoctor && (
+          <div className='pt-3 border-t border-gray-200'>
+            <p className='text-xs font-semibold text-gray-700 uppercase mb-2'>
+              Doctor Information
+            </p>
+            <div className='flex justify-between'>
+              <span className='text-gray-500'>Name:</span>
+              <span className='font-medium text-right'>
+                Dr. {selectedDoctor.name}
+              </span>
+            </div>
+            <div className='flex justify-between mt-1'>
+              <span className='text-gray-500'>Specialization:</span>
+              <span className='font-medium text-right'>
+                {selectedDoctor.specialization}
+              </span>
+            </div>
+            <div className='flex justify-between mt-1'>
+              <span className='text-gray-500'>Department:</span>
+              <span className='font-medium text-right'>
+                {selectedDoctor.department}
+              </span>
+            </div>
+            {selectedDoctor.consultationFee && (
+              <div className='flex justify-between mt-1'>
+                <span className='text-gray-500'>Fee:</span>
+                <span className='font-medium text-right text-green-600'>
+                  LKR {selectedDoctor.consultationFee.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!selectedPatient && !selectedDoctor && (
+          <div className='py-4 text-center text-gray-400 text-xs'>
+            Select a patient and doctor to see summary
           </div>
         )}
       </div>

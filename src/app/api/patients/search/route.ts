@@ -5,7 +5,7 @@ import User from '@/models/User';
 import Patient from '@/models/Patient';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// GET /api/patients/search - Search patients
+// GET /api/patients/search - Search patients by NIC
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -38,28 +38,40 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q') || '';
+    const nic = searchParams.get('nic') || '';
 
-    if (!query || query.length < 2) {
+    if (!nic || nic.trim().length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Search query must be at least 2 characters',
+          message: 'NIC number is required',
         },
         { status: 400 }
       );
     }
 
-    // Use the static search method from Patient model
-    const patients = await Patient.searchPatients(query);
+    // Search for patient by NIC (exact match or case-insensitive)
+    const patient = await Patient.findOne({
+      nic: { $regex: new RegExp(`^${nic.trim()}$`, 'i') },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Patient not found with this NIC number',
+        },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      data: patients,
+      data: patient,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error('Error searching patients:', error);
+    console.error('Error searching patient by NIC:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Internal server error' },
       { status: 500 }

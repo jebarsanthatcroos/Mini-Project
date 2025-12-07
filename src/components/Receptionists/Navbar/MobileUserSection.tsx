@@ -4,15 +4,16 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import UserAvatar from './UserAvatar';
-import RoleBadge from './RoleBadge';
-
+import UserAvatar from '@/components/Navbar/UserAvatar';
+import RoleBadge from '@/components/Navbar/RoleBadge';
 import {
   FiUser,
   FiMessageSquare,
   FiBell,
-  FiPackage,
-  FiDroplet,
+  FiClipboard,
+  FiPhoneCall,
+  FiClock,
+  FiBarChart2,
   FiSettings,
   FiShield,
   FiLogOut,
@@ -35,9 +36,11 @@ export default function MobileUserSection({
     { name: 'Profile', href: '/profile', icon: FiUser },
     { name: 'Messages', href: '/messages', icon: FiMessageSquare },
     { name: 'Notifications', href: '/notifications', icon: FiBell },
-    { name: 'Pharmacy', href: '/pharmacy', icon: FiPackage },
-    { name: 'Lab Tests', href: '/laboratory', icon: FiDroplet },
+    { name: 'Check-in', href: 'Receptionist/check-in', icon: FiClipboard },
+    { name: 'Calls', href: '/Receptionist/calls', icon: FiPhoneCall },
     { name: 'Settings', href: '/settings', icon: FiSettings },
+    { name: 'Analytics', href: '/Receptionist/analytics', icon: FiBarChart2 },
+    { name: 'Queue', href: 'Receptionist/queue', icon: FiClock },
   ];
 
   const handleSignOut = async () => {

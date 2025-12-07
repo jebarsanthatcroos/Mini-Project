@@ -57,6 +57,10 @@ export default function NewMedicalRecordPage() {
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [dragActive, setDragActive] = useState(false);
+  const [nicSearch, setNicSearch] = useState('');
+  const [searchingNic, setSearchingNic] = useState(false);
+  const [selectedPatientDetails, setSelectedPatientDetails] =
+    useState<Patient | null>(null);
 
   const recordTypes = [
     { value: 'CONSULTATION', label: 'Consultation Note' },
@@ -83,7 +87,7 @@ export default function NewMedicalRecordPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/doctor/patients');
+      const response = await fetch('/api/patients');
 
       if (!response.ok) throw new Error('Failed to fetch patients');
 
@@ -135,7 +139,7 @@ export default function NewMedicalRecordPage() {
         submitData.append('attachments', file);
       });
 
-      const response = await fetch('/api/doctor/records', {
+      const response = await fetch('/api/records', {
         method: 'POST',
         body: submitData,
       });
@@ -148,7 +152,7 @@ export default function NewMedicalRecordPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push('/doctor/records');
+        router.push('/records');
       } else {
         throw new Error(result.message || 'Failed to create record');
       }
@@ -170,9 +174,66 @@ export default function NewMedicalRecordPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
+    // Update selected patient details when patient is selected from dropdown
+    if (name === 'patientId') {
+      const patient = patients.find(p => p._id === value);
+      setSelectedPatientDetails(patient || null);
+    }
+
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleNicSearch = async () => {
+    if (!nicSearch.trim()) {
+      setError('Please enter a NIC number');
+      return;
+    }
+
+    try {
+      setSearchingNic(true);
+      setError(null);
+
+      const response = await fetch(`/api/patients/search?nic=${nicSearch}`);
+
+      if (!response.ok) {
+        throw new Error('Patient not found');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Set the patient in the form
+        setFormData(prev => ({ ...prev, patientId: result.data._id }));
+        setSelectedPatientDetails(result.data);
+        setNicSearch('');
+      } else {
+        throw new Error('Patient not found with this NIC');
+      }
+    } catch (error) {
+      console.error('Error searching patient:', error);
+      setError(error instanceof Error ? error.message : 'Patient not found');
+      setSelectedPatientDetails(null);
+    } finally {
+      setSearchingNic(false);
+    }
+  };
+
+  const calculateAge = (dateOfBirth: string) => {
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return age;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,7 +305,7 @@ export default function NewMedicalRecordPage() {
         {/* Header */}
         <div className='mb-8'>
           <button
-            onClick={() => router.push('/doctor/records')}
+            onClick={() => router.push('/records')}
             className='flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
           >
             <FiArrowLeft className='w-5 h-5' />
@@ -287,33 +348,112 @@ export default function NewMedicalRecordPage() {
                   Patient Information
                 </h2>
 
+                {/* NIC Search */}
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-2'>
-                    Select Patient *
+                    Search by NIC Number *
                   </label>
-                  <select
-                    name='patientId'
-                    value={formData.patientId}
-                    onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      formErrors.patientId
-                        ? 'border-red-300'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    <option value=''>Select a patient...</option>
-                    {patients.map(patient => (
-                      <option key={patient._id} value={patient._id}>
-                        {patient.firstName} {patient.lastName} - {patient.email}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.patientId && (
+                  <div className='flex gap-2'>
+                    <input
+                      type='text'
+                      value={nicSearch}
+                      onChange={e => setNicSearch(e.target.value)}
+                      placeholder='Enter NIC number...'
+                      className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        formErrors.patientId
+                          ? 'border-red-300'
+                          : 'border-gray-300'
+                      }`}
+                      onKeyPress={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNicSearch();
+                        }
+                      }}
+                    />
+                    <button
+                      type='button'
+                      onClick={handleNicSearch}
+                      disabled={searchingNic}
+                      className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors'
+                    >
+                      {searchingNic ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
+                  {formErrors.patientId && !selectedPatientDetails && (
                     <p className='mt-1 text-sm text-red-600'>
                       {formErrors.patientId}
                     </p>
                   )}
                 </div>
+
+                {/* Selected Patient Details */}
+                {selectedPatientDetails && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className='mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg'
+                  >
+                    <div className='flex items-center justify-between mb-3'>
+                      <h3 className='font-semibold text-blue-900'>
+                        Patient Details
+                      </h3>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          setSelectedPatientDetails(null);
+                          setFormData(prev => ({ ...prev, patientId: '' }));
+                          setNicSearch('');
+                        }}
+                        className='text-blue-600 hover:text-blue-800 text-sm'
+                      >
+                        Change Patient
+                      </button>
+                    </div>
+                    <div className='grid grid-cols-2 gap-3 text-sm'>
+                      <div>
+                        <p className='text-blue-600 font-medium'>Name</p>
+                        <p className='text-blue-900'>
+                          {selectedPatientDetails.firstName}{' '}
+                          {selectedPatientDetails.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className='text-blue-600 font-medium'>Email</p>
+                        <p className='text-blue-900'>
+                          {selectedPatientDetails.email}
+                        </p>
+                      </div>
+                      <div>
+                        <p className='text-blue-600 font-medium'>Age</p>
+                        <p className='text-blue-900'>
+                          {calculateAge(selectedPatientDetails.dateOfBirth)}{' '}
+                          years
+                        </p>
+                      </div>
+                      <div>
+                        <p className='text-blue-600 font-medium'>Gender</p>
+                        <p className='text-blue-900 capitalize'>
+                          {selectedPatientDetails.gender.toLowerCase()}
+                        </p>
+                      </div>
+                      <div className='col-span-2'>
+                        <p className='text-blue-600 font-medium'>
+                          Date of Birth
+                        </p>
+                        <p className='text-blue-900'>
+                          {new Date(
+                            selectedPatientDetails.dateOfBirth
+                          ).toLocaleDateString('en-LK', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
 
               {/* Record Details */}
@@ -566,10 +706,10 @@ export default function NewMedicalRecordPage() {
                     <div className='flex justify-between'>
                       <span className='text-gray-500'>Date:</span>
                       <span className='font-medium'>
-                        {new Date(formData.date).toLocaleDateString('en-US', {
+                        {new Date(formData.date).toLocaleDateString('en-LK', {
+                          year: 'numeric',
                           month: 'short',
                           day: 'numeric',
-                          year: 'numeric',
                         })}
                       </span>
                     </div>
@@ -596,7 +736,7 @@ export default function NewMedicalRecordPage() {
 
                   <button
                     type='button'
-                    onClick={() => router.push('/doctor/records')}
+                    onClick={() => router.push('/records')}
                     className='w-full px-4 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
                   >
                     Cancel
