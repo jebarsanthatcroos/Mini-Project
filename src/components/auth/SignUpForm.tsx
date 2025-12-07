@@ -5,15 +5,13 @@ import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-
-// Components
 import NameField from './form/NameField';
 import EmailField from './form/EmailField';
+import NICField from './form/NICField';
 import PasswordField from './form/PasswordField';
 import ConfirmPasswordField from './form/ConfirmPasswordField';
 import SubmitButton from './form/SubmitButton';
 
-// Validation schema
 const signUpSchema = z
   .object({
     name: z
@@ -25,6 +23,13 @@ const signUpSchema = z
       .string()
       .email('Please enter a valid email address')
       .min(1, 'Email is required'),
+    nic: z
+      .string()
+      .min(1, 'NIC is required')
+      .regex(
+        /^([0-9]{9}[vVxX]|[0-9]{12})$/,
+        'NIC must be either 9 digits followed by V/X or 12 digits'
+      ),
     password: z
       .string()
       .min(6, 'Password must be at least 6 characters')
@@ -71,14 +76,14 @@ export default function SignUpForm({
     defaultValues: {
       name: '',
       email: '',
+      nic: '',
       password: '',
       confirmPassword: '',
     },
   });
-
-  // Watch form values
   const nameValue = watch('name');
   const emailValue = watch('email');
+  const nicValue = watch('nic');
   const passwordValue = watch('password');
   const confirmPasswordValue = watch('confirmPassword');
 
@@ -96,6 +101,7 @@ export default function SignUpForm({
         body: JSON.stringify({
           name: data.name.trim(),
           email: data.email.toLowerCase(),
+          nic: data.nic.toUpperCase(),
           password: data.password,
         }),
       });
@@ -116,7 +122,6 @@ export default function SignUpForm({
 
       onSuccess('Account created successfully! Redirecting...');
 
-      // Auto sign in after successful registration
       const signInResult = await signIn('credentials', {
         email: data.email.toLowerCase(),
         password: data.password,
@@ -156,6 +161,13 @@ export default function SignUpForm({
         value={emailValue}
         placeholder='Enter your email address'
         label='Email Address'
+      />
+
+      {/* NIC Field */}
+      <NICField<SignUpFormData>
+        register={register}
+        error={errors.nic}
+        value={nicValue}
       />
 
       {/* Password Field */}

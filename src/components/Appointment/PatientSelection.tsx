@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiUser, FiSearch } from 'react-icons/fi';
 import { Patient, AppointmentFormData } from '@/types/appointment';
@@ -18,18 +18,51 @@ interface PatientSelectionProps {
 }
 
 const PatientSelection: React.FC<PatientSelectionProps> = ({
-  formData,
-  filteredPatients = [],
   searchTerm,
-  showPatientDropdown,
   formErrors,
   onSearchChange,
-  onPatientSelect,
-  onShowDropdown,
-  getSelectedPatient,
+  onPatientSelect, // This prop was not being used!
+  getSelectedPatient, // Use this to get the selected patient
 }) => {
-  const handleSearchClick = () => {
-    onShowDropdown(true);
+  const [searching, setSearching] = useState(false);
+
+  // Get selected patient from parent component instead of local state
+  const selectedPatient = getSelectedPatient();
+
+  const handleNicSearch = async () => {
+    if (!searchTerm.trim()) {
+      return;
+    }
+
+    try {
+      setSearching(true);
+
+      const response = await fetch(`/api/patients/search?nic=${searchTerm}`);
+
+      if (!response.ok) {
+        throw new Error('Patient not found');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Call the parent's onPatientSelect to update formData.patientId
+        onPatientSelect(result.data);
+      } else {
+        throw new Error('Patient not found with this NIC');
+      }
+    } catch (error) {
+      console.error('Error searching patient:', error);
+      alert('Patient not found with this NIC number');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleClearPatient = () => {
+    // Clear the patient selection in parent component
+    onPatientSelect({ _id: '' } as Patient);
+    onSearchChange('');
   };
 
   return (
@@ -46,7 +79,7 @@ const PatientSelection: React.FC<PatientSelectionProps> = ({
       <div className='space-y-4'>
         <div>
           <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Select Patient *
+            Search by NIC Number *
           </label>
 
           <div className='flex gap-2'>
@@ -54,113 +87,107 @@ const PatientSelection: React.FC<PatientSelectionProps> = ({
               <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
               <input
                 type='text'
-                placeholder='Search patients by NIC...'
+                name='patientSearch'
+                placeholder='Enter patient NIC number...'
                 value={searchTerm}
-                onChange={e => {
-                  onSearchChange(e.target.value);
-                  onShowDropdown(true);
+                onChange={e => onSearchChange(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleNicSearch();
+                  }
                 }}
-                onFocus={() => onShowDropdown(true)}
-                className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  formErrors.patientId ? 'border-red-300' : 'border-gray-300'
+                }`}
               />
             </div>
 
             <button
               type='button'
-              onClick={handleSearchClick}
-              className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition flex items-center gap-2 whitespace-nowrap'
+              onClick={handleNicSearch}
+              disabled={searching}
+              className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition flex items-center gap-2 whitespace-nowrap disabled:opacity-50'
             >
               <FiSearch className='w-4 h-4' />
-              Search
+              {searching ? 'Searching...' : 'Search'}
             </button>
           </div>
 
-          {showPatientDropdown && filteredPatients?.length > 0 && (
-            <div className='absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto'>
-              {filteredPatients.map(patient => (
-                <div
-                  key={patient._id}
-                  onClick={() => onPatientSelect(patient)}
-                  className='px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0'
-                >
-                  <div className='font-medium text-gray-900'>
-                    {patient.firstName} {patient.lastName}
-                  </div>
-                  <div className='text-sm text-gray-500'>
-                    {patient.email} • NIC: {patient.nic} •{' '}
-                    {calculateAge(patient.dateOfBirth)} years
-                  </div>
-                  <div className='text-xs text-gray-400 mt-1'>
-                    {patient.bloodType &&
-                      `Blood Type: ${formatBloodType(patient.bloodType)} • `}
-                    {patient.gender.toLowerCase()}
-                    {patient.isActive === false && ' • Inactive'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {formErrors.patientId && (
+          {formErrors.patientId && !selectedPatient && (
             <p className='mt-1 text-sm text-red-600'>{formErrors.patientId}</p>
           )}
         </div>
 
-        {formData.patientId && (
-          <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-            <h3 className='font-medium text-blue-900 mb-2'>Selected Patient</h3>
+        {selectedPatient && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className='bg-blue-50 border border-blue-200 rounded-lg p-4'
+          >
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='font-medium text-blue-900'>Selected Patient</h3>
+              <button
+                type='button'
+                onClick={handleClearPatient}
+                className='text-blue-600 hover:text-blue-800 text-sm font-medium'
+              >
+                Change Patient
+              </button>
+            </div>
             <div className='grid grid-cols-2 gap-4 text-sm'>
               <div>
                 <span className='text-blue-700'>Name:</span>
                 <p className='text-blue-900 font-medium'>
-                  {getSelectedPatient()?.firstName}{' '}
-                  {getSelectedPatient()?.lastName}
+                  {selectedPatient.firstName} {selectedPatient.lastName}
                 </p>
               </div>
               <div>
                 <span className='text-blue-700'>NIC:</span>
-                <p className='text-blue-900'>{getSelectedPatient()?.nic}</p>
+                <p className='text-blue-900'>{selectedPatient.nic}</p>
               </div>
               <div>
                 <span className='text-blue-700'>Email:</span>
-                <p className='text-blue-900'>{getSelectedPatient()?.email}</p>
+                <p className='text-blue-900'>{selectedPatient.email}</p>
               </div>
               <div>
                 <span className='text-blue-700'>Phone:</span>
-                <p className='text-blue-900'>{getSelectedPatient()?.phone}</p>
+                <p className='text-blue-900'>{selectedPatient.phone}</p>
               </div>
               <div>
                 <span className='text-blue-700'>Age:</span>
                 <p className='text-blue-900'>
-                  {getSelectedPatient() &&
-                    calculateAge(getSelectedPatient()!.dateOfBirth)}{' '}
-                  years
+                  {calculateAge(selectedPatient.dateOfBirth)} years
                 </p>
               </div>
               <div>
-                <span className='text-blue-700'>Blood Type:</span>
-                <p className='text-blue-900'>
-                  {formatBloodType(getSelectedPatient()?.bloodType)}
+                <span className='text-blue-700'>Gender:</span>
+                <p className='text-blue-900 capitalize'>
+                  {selectedPatient.gender.toLowerCase()}
                 </p>
               </div>
-              {getSelectedPatient()?.height && (
+              {selectedPatient.bloodType && (
                 <div>
-                  <span className='text-blue-700'>Height:</span>
+                  <span className='text-blue-700'>Blood Type:</span>
                   <p className='text-blue-900'>
-                    {getSelectedPatient()?.height} cm
+                    {formatBloodType(selectedPatient.bloodType)}
                   </p>
                 </div>
               )}
-              {getSelectedPatient()?.weight && (
+              {selectedPatient.height && (
+                <div>
+                  <span className='text-blue-700'>Height:</span>
+                  <p className='text-blue-900'>{selectedPatient.height} cm</p>
+                </div>
+              )}
+              {selectedPatient.weight && (
                 <div>
                   <span className='text-blue-700'>Weight:</span>
-                  <p className='text-blue-900'>
-                    {getSelectedPatient()?.weight} kg
-                  </p>
+                  <p className='text-blue-900'>{selectedPatient.weight} kg</p>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </motion.div>

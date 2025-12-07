@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import UserAvatar from './UserAvatar';
 import RoleBadge from './RoleBadge';
+
 import {
   FiUser,
   FiMessageSquare,

@@ -6,7 +6,7 @@ import {
   Gender,
   MaritalStatus,
   IPatientFormData,
-} from '@/app/(page)/Receptionist/patients/new/page';
+} from '@/app/(page)/patients/new/page';
 
 interface PatientBasicInfoFormProps {
   formData: IPatientFormData;

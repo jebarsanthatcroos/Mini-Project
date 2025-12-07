@@ -3,7 +3,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import HealthLogo from '@/components/Logo.static';
 
 interface SidebarHeaderProps {
   isCollapsed: boolean;
@@ -33,9 +32,7 @@ export default function SidebarHeader({
             animate={{ opacity: 1, width: 'auto' }}
             exit={{ opacity: 0, width: 0 }}
             className='text-xl font-bold text-gray-900 whitespace-nowrap'
-          >
-            <HealthLogo />
-          </motion.span>
+          ></motion.span>
         )}
       </motion.button>
 

@@ -4,8 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-
-// Components
 import EmailField from './form/EmailField';
 import PasswordField from './form/PasswordField';
 import SubmitButton from './form/SubmitButton';

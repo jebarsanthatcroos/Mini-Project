@@ -13,6 +13,15 @@ import {
   FiSettings,
   FiShield,
   FiLogOut,
+  FiCalendar,
+  FiUsers,
+  FiClipboard,
+  FiActivity,
+  FiFileText,
+  FiHome,
+  FiClock,
+  FiPhoneCall,
+  FiBarChart2,
 } from 'react-icons/fi';
 import Image from 'next/image';
 import RoleBadge from './RoleBadge';
@@ -28,14 +37,122 @@ export default function UserMenuItems({
 }: UserMenuItemsProps) {
   const { signOut } = useAuth();
 
-  const userMenuItems = [
+  // Common menu items for all users
+  const commonMenuItems = [
     { name: 'Profile', href: '/profile', icon: FiUser },
     { name: 'Messages', href: '/messages', icon: FiMessageSquare },
     { name: 'Notifications', href: '/notifications', icon: FiBell },
-    { name: 'Pharmacy', href: '/pharmacy', icon: FiPackage },
-    { name: 'Lab Tests', href: '/laboratory', icon: FiDroplet },
     { name: 'Settings', href: '/settings', icon: FiSettings },
   ];
+
+  // Role-specific menu items
+  const roleSpecificItems: { [key: string]: any[] } = {
+    PATIENT: [
+      { name: 'My Appointments', href: '/appointments', icon: FiCalendar },
+      { name: 'Pharmacy', href: '/pharmacy', icon: FiPackage },
+      { name: 'Lab Tests', href: '/laboratory', icon: FiDroplet },
+      { name: 'Medical Records', href: '/medical-records', icon: FiFileText },
+    ],
+    DOCTOR: [
+      {
+        name: 'My Schedule',
+        href: '/doctor/schedule',
+        icon: FiCalendar,
+      },
+      {
+        name: 'Prescriptions',
+        href: '/doctor/prescriptions',
+        icon: FiClipboard,
+      },
+      {
+        name: 'Lab Results',
+        href: '/doctor/lab-results',
+        icon: FiDroplet,
+      },
+      {
+        name: 'Reports',
+        href: '/records',
+        icon: FiFileText,
+      },
+    ],
+    NURSE: [
+      { name: 'Tasks', href: '/nurse/tasks', icon: FiClipboard },
+      { name: 'Vitals', href: '/nurse/vitals', icon: FiActivity },
+      { name: 'Tasks', href: '/nurse/tasks', icon: FiClipboard },
+      {
+        name: 'Reports',
+        href: '/records',
+        icon: FiFileText,
+      },
+    ],
+    RECEPTIONIST: [
+      {
+        name: 'Check-in',
+        href: 'receptionist/checkin',
+        icon: FiClipboard,
+      },
+      {
+        name: 'Reports',
+        href: '/records',
+        icon: FiFileText,
+      },
+      {
+        name: 'Queue',
+        href: '/Receptionist/queue',
+        icon: FiClock,
+      },
+      {
+        name: 'Calls',
+        href: '/Receptionist/calls',
+        icon: FiPhoneCall,
+      },
+      {
+        name: 'Analytics',
+        href: '/Receptionist/analytics',
+        icon: FiBarChart2,
+      },
+    ],
+    LABTECH: [
+      { name: 'Lab Tests', href: '/lab/tests', icon: FiDroplet },
+      { name: 'Test Queue', href: '/lab/queue', icon: FiClipboard },
+      { name: 'Results', href: '/lab/results', icon: FiFileText },
+    ],
+    PHARMACIST: [
+      {
+        name: 'Prescriptions',
+        href: '/prescriptions',
+        icon: FiClipboard,
+      },
+      {
+        name: 'Inventory',
+        href: 'pharmacy/inventory',
+        icon: FiPackage,
+      },
+      { name: 'Orders', href: '/pharmacy/orders', icon: FiFileText },
+    ],
+    ADMIN: [
+      { name: 'Admin Panel', href: '/dashboard/admin', icon: FiShield },
+      { name: 'Users', href: '/dashboard/admin/users', icon: FiUsers },
+      {
+        name: 'Departments',
+        href: '/dashboard/admin/departments',
+        icon: FiHome,
+      },
+      { name: 'Reports', href: '/dashboard/admin/reports', icon: FiFileText },
+    ],
+    STAFF: [
+      { name: 'Dashboard', href: '/dashboard/staff', icon: FiHome },
+      { name: 'Tasks', href: '/dashboard/staff/tasks', icon: FiClipboard },
+    ],
+  };
+
+  // Get menu items based on user role
+  const getUserMenuItems = () => {
+    const roleItems = user?.role ? roleSpecificItems[user.role] || [] : [];
+    return [...commonMenuItems, ...roleItems];
+  };
+
+  const userMenuItems = getUserMenuItems();
 
   const handleSignOut = async () => {
     try {
@@ -49,7 +166,7 @@ export default function UserMenuItems({
   return (
     <>
       {/* User Info Header */}
-      <div className='p-4 bg-linear-to-r from-blue-50 to-purple-50 border-b border-white/20'>
+      <div className='p-4 bg-linear-to-r from-blue-50 to-purple-50 border-b border-gray-200'>
         <div className='flex items-center space-x-3'>
           {user?.image ? (
             <div className='relative h-12 w-12 rounded-full border-2 border-white shadow-md overflow-hidden'>
@@ -71,53 +188,54 @@ export default function UserMenuItems({
               {user?.name || 'User'}
             </div>
             <div className='text-xs text-gray-600 truncate'>{user?.email}</div>
-            {user?.role && <RoleBadge role={user.role} />}
+            {user?.role && (
+              <div className='mt-1'>
+                <RoleBadge role={user.role} />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Menu Items */}
-      <div className='p-2'>
-        {userMenuItems.map(item => (
-          <motion.div
-            key={item.name}
-            whileHover={{ x: 5 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-          >
-            <Link
-              href={item.href}
-              className='flex items-center space-x-3 px-3 py-3 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200'
-              onClick={onItemClick}
-            >
-              <item.icon className='h-4 w-4' />
-              <span>{item.name}</span>
-            </Link>
-          </motion.div>
-        ))}
+      <div className='p-2 max-h-96 overflow-y-auto'>
+        {userMenuItems.map((item, index) => {
+          // Add divider after common items
+          const showDivider =
+            index === commonMenuItems.length - 1 &&
+            userMenuItems.length > commonMenuItems.length;
 
-        {/* Admin Panel if admin */}
-        {user?.role === 'ADMIN' && (
-          <motion.div whileHover={{ x: 5 }}>
-            <Link
-              href='/dashboard/admin'
-              className='flex items-center space-x-3 px-3 py-3 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200'
-              onClick={onItemClick}
-            >
-              <FiShield className='h-4 w-4' />
-              <span>Admin Panel</span>
-            </Link>
-          </motion.div>
-        )}
+          return (
+            <div key={item.name}>
+              <motion.div
+                whileHover={{ x: 5 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+              >
+                <Link
+                  href={item.href}
+                  className='flex items-center space-x-3 px-3 py-3 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200'
+                  onClick={onItemClick}
+                >
+                  <item.icon className='h-4 w-4' />
+                  <span>{item.name}</span>
+                </Link>
+              </motion.div>
+              {showDivider && <div className='my-2 border-t border-gray-200' />}
+            </div>
+          );
+        })}
 
         {/* Sign Out Button */}
-        <motion.button
-          onClick={handleSignOut}
-          whileHover={{ x: 5, backgroundColor: '#fef2f2' }}
-          className='flex items-center space-x-3 w-full px-3 py-3 text-sm text-red-600 hover:text-red-700 rounded-xl transition-all duration-200 text-left mt-2'
-        >
-          <FiLogOut className='h-4 w-4' />
-          <span>Sign Out</span>
-        </motion.button>
+        <div className='mt-2 pt-2 border-t border-gray-200'>
+          <motion.button
+            onClick={handleSignOut}
+            whileHover={{ x: 5, backgroundColor: '#fef2f2' }}
+            className='flex items-center space-x-3 w-full px-3 py-3 text-sm text-red-600 hover:text-red-700 rounded-xl transition-all duration-200 text-left'
+          >
+            <FiLogOut className='h-4 w-4' />
+            <span>Sign Out</span>
+          </motion.button>
+        </div>
       </div>
     </>
   );

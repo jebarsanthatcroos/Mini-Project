@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiAlertCircle, FiPhone, FiUser, FiMail, FiInfo } from 'react-icons/fi';
-import { IPatientFormData } from '@/app/(page)/Receptionist/patients/new/page';
+import { IPatientFormData } from '@/app/(page)/patients/new/page';
 
 interface PatientEmergencyContactFormProps {
   formData: IPatientFormData;

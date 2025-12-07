@@ -5,7 +5,6 @@ import User, { UserRole } from '@/models/User';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
-// Validation schema
 const registerSchema = z.object({
   name: z
     .string()
@@ -21,9 +20,16 @@ const registerSchema = z.object({
     .email('Please enter a valid email address')
     .min(1, 'Email is required')
     .transform(email => email.toLowerCase().trim()),
+  nic: z
+    .string()
+    .min(1, 'NIC is required')
+    .regex(
+      /^([0-9]{9}[vVxX]|[0-9]{12})$/,
+      'NIC must be either 9 digits followed by V/X or 12 digits'
+    )
+    .transform(nic => nic.toUpperCase().trim()),
   password: z
     .string()
-    .min(6, 'Password must be at least 6 characters')
     .max(100, 'Password is too long')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
@@ -98,12 +104,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, email, password, role, phone, department, specialization } =
-      validationResult.data;
+    const {
+      name,
+      email,
+      nic,
+      password,
+      role,
+      phone,
+      department,
+      specialization,
+    } = validationResult.data;
 
     await connectDB();
 
-    // Check if user already exists
+    // Check if user already exists with email
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return Response.json(
@@ -115,7 +129,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Additional security: Check for common passwords (basic example)
+    // Check if NIC already exists
+    const existingNIC = await User.findOne({ nic });
+    if (existingNIC) {
+      return Response.json(
+        {
+          message: 'This NIC is already registered',
+          field: 'nic',
+        },
+        { status: 409 }
+      );
+    }
+
     const commonPasswords = [
       'password',
       '123456',
@@ -135,11 +160,10 @@ export async function POST(req: Request) {
 
     // Hash password with increased salt rounds for better security
     const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user with additional default fields
     const user = await User.create({
       name,
       email,
+      nic,
       password: hashedPassword,
       role,
       phone: phone || undefined,
@@ -152,11 +176,11 @@ export async function POST(req: Request) {
       updatedAt: new Date(),
     });
 
-    // Remove sensitive information from response
     const userResponse = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
+      nic: user.nic,
       role: user.role,
       phone: user.phone,
       department: user.department,
@@ -165,9 +189,6 @@ export async function POST(req: Request) {
       createdAt: user.createdAt,
     };
 
-    console.log(`New user registered: ${email} with role: ${role}`);
-
-    // Security headers for response
     const headers = {
       'Content-Type': 'application/json',
     };
@@ -185,12 +206,17 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Registration error:', error);
 
-    // Handle specific MongoDB errors
     if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      const fieldMessages: Record<string, string> = {
+        email: 'User already exists with this email',
+        nic: 'This NIC is already registered',
+      };
+
       return Response.json(
         {
-          message: 'User already exists with this email',
-          field: 'email',
+          message: fieldMessages[duplicateField] || 'Duplicate entry found',
+          field: duplicateField || 'email',
         },
         { status: 409 }
       );
@@ -232,44 +258,73 @@ export async function POST(req: Request) {
   }
 }
 
-// Optional: Add GET method to check email availability
+// Optional: Add GET method to check email and NIC availability
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get('email');
+    const nic = searchParams.get('nic');
 
-    if (!email) {
+    if (!email && !nic) {
       return Response.json(
-        { message: 'Email parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return Response.json(
-        {
-          message: 'Please enter a valid email address',
-          field: 'email',
-        },
+        { message: 'Email or NIC parameter is required' },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    // Check email availability
+    if (email) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return Response.json(
+          {
+            message: 'Please enter a valid email address',
+            field: 'email',
+          },
+          { status: 400 }
+        );
+      }
 
-    return Response.json({
-      available: !existingUser,
-      email: email,
-      message: existingUser ? 'Email already taken' : 'Email available',
-    });
+      const existingUser = await User.findOne({
+        email: email.toLowerCase().trim(),
+      });
+
+      return Response.json({
+        available: !existingUser,
+        email: email,
+        message: existingUser ? 'Email already taken' : 'Email available',
+      });
+    }
+
+    // Check NIC availability
+    if (nic) {
+      // Validate NIC format
+      const nicRegex = /^([0-9]{9}[vVxX]|[0-9]{12})$/;
+      if (!nicRegex.test(nic)) {
+        return Response.json(
+          {
+            message: 'Please enter a valid NIC',
+            field: 'nic',
+          },
+          { status: 400 }
+        );
+      }
+
+      const existingNIC = await User.findOne({
+        nic: nic.toUpperCase().trim(),
+      });
+
+      return Response.json({
+        available: !existingNIC,
+        nic: nic,
+        message: existingNIC ? 'NIC already registered' : 'NIC available',
+      });
+    }
   } catch (error: any) {
-    console.error('Email availability check error:', error);
+    console.error('Availability check error:', error);
 
     return Response.json({ message: 'Internal server error' }, { status: 500 });
   }

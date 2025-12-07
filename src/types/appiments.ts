@@ -41,6 +41,7 @@ export interface Appointment {
   _id: string;
   appointmentDate: string;
   appointmentTime: string;
+  doctorId: string;
   type: AppointmentType;
   status: AppointmentStatus;
   reason: string;

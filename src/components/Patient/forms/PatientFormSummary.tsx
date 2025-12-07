@@ -11,7 +11,7 @@ import {
   FiShield,
   FiAlertCircle,
 } from 'react-icons/fi';
-import { IPatientFormData } from '@/app/(page)/Receptionist/patients/new/page';
+import { IPatientFormData } from '@/app/(page)/patients/new/page';
 
 interface PatientFormSummaryProps {
   formData: IPatientFormData;

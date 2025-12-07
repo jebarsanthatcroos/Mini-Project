@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Loading from '../../../components/Loading';
 
 export default function ReceptionistDashboard() {
   const { data: session, status } = useSession();
@@ -15,15 +16,17 @@ export default function ReceptionistDashboard() {
     }
   }, [session, status, router]);
 
-  if (status === 'loading') return <div>Loading...</div>;
+  if (status === 'loading') return <Loading />;
 
   return (
-    <div className='min-h-screen bg-gray-50 p-6'>
-      <div className='max-w-4xl mx-auto'>
-        <h1 className='text-3xl font-bold mb-8'>Receptionist Dashboard</h1>
-        <p>Welcome, {session?.user?.name}</p>
-        {/* Add receptionist-specific content */}
+    <>
+      <div className='min-h-screen bg-gray-50 p-6'>
+        <div className='max-w-4xl mx-auto'>
+          <h1 className='text-3xl font-bold mb-8'>Receptionist Dashboard</h1>
+          <p>Welcome, {session?.user?.name}</p>
+          {/* Add receptionist-specific content */}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
